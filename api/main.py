@@ -8,15 +8,16 @@ rate-limit) vit en mémoire du process. Plusieurs workers = incohérences.
 """
 from __future__ import annotations
 
-# Charge un éventuel .env AVANT que les modules ne lisent les variables d'environnement.
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ModuleNotFoundError:
-    pass
-
 import os
 from pathlib import Path
+
+# Charge le .env (racine du projet) AVANT que les modules ne lisent les variables d'env.
+# Chemin explicite → fonctionne quel que soit le répertoire de lancement (prod incluse).
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ModuleNotFoundError:
+    pass
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware

@@ -14,3 +14,4 @@ httpx>=0.27
 python-dateutil>=2.9
 
 argon2-cffi>=23.1         # mots de passe
+python-dotenv>=1.0        # lecture du fichier .env (config prod)

@@ -21,12 +21,13 @@ import secrets
 import sys
 
 # Rendre `src` importable quel que soit le CWD.
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _ROOT)
 
 # Même .env que le serveur (ex. TVTIME_DB_PATH) — AVANT d'importer src.db.
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(os.path.join(_ROOT, ".env"))
 except ModuleNotFoundError:
     pass
 
