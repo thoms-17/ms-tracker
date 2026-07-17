@@ -1,0 +1,22 @@
+.venv/
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
+secrets.toml
+.env
+data/cache/*.json
+data/tvtime.db
+data/tvtime.db-wal
+data/tvtime.db-shm
+data/backups/
+.DS_Store
+# Exports TV Time perso (données personnelles) — ne jamais committer
+tvtime-*.json
+# Front React
+frontend/node_modules/
+frontend/dist/
+
+# Artefact PWA en dev
+frontend/dev-dist/
+# Réglages locaux Claude
+.claude/settings.local.json

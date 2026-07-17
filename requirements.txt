@@ -1,0 +1,21 @@
+# API (FastAPI)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9   # upload de fichiers (import TV Time)
+
+# Cœur métier : base, TMDB, données
+pandas>=2.2
+numpy>=1.26
+requests>=2.32
+httpx>=0.27
+python-dateutil>=2.9
+
+# Authentification (mots de passe Argon2id)
+argon2-cffi>=23.1
+
+# Stats / ML (exposés via l'API plus tard)
+scikit-learn>=1.5
+statsmodels>=0.14
+
+# Confort dev : charge un fichier .env
+python-dotenv>=1.0

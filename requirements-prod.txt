@@ -1,0 +1,16 @@
+# Dépendances de PRODUCTION (API + import + auth).
+# Volontairement SANS les libs ML (scikit-learn, statsmodels, scipy) : l'API ne les
+# importe pas → ~200 Mo économisés (utile sur l'hébergement gratuit).
+# En local/dev, utilise plutôt requirements.txt (qui contient tout).
+
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9   # upload de fichiers (import TV Time)
+
+pandas>=2.2
+numpy>=1.26
+requests>=2.32
+httpx>=0.27
+python-dateutil>=2.9
+
+argon2-cffi>=23.1         # mots de passe
