@@ -21,7 +21,7 @@ Uid = Depends(deps.current_user_id)
 def _key() -> str:
     key = enrich.get_api_key()
     if not key:
-        raise HTTPException(503, "Clé TMDB absente (voir .streamlit/secrets.toml)")
+        raise HTTPException(503, "Clé TMDB absente (renseigne TMDB_API_KEY dans .env)")
     return key
 
 

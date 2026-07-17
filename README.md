@@ -14,8 +14,8 @@ make dev         # lance API (:8000) + front (:5173) ensemble
 ```
 
 Puis ouvre **http://localhost:5173** (doc API auto sur http://localhost:8000/docs).
-Autres cibles : `make api`, `make front`, `make build`. Clé TMDB : dans `.streamlit/secrets.toml`
-(ou variable d'env `TMDB_API_KEY`).
+Autres cibles : `make api`, `make front`, `make build`. Clé TMDB : variable `TMDB_API_KEY`
+dans `.env` (cf. `.env.example`).
 
 ## Fonctionnalités
 
@@ -52,26 +52,25 @@ Toutes les analyses lisent la même base : marquer un épisode met à jour les s
 ## Installation
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+make install          # venv + dépendances back, puis npm install côté front
 ```
 
-Place tes exports (`tvtime-movies-*.json`, `tvtime-series-*.json`) à la racine du projet.
-Le plus récent de chaque type est chargé automatiquement.
+Place tes exports (`tvtime-movies-*.json`, `tvtime-series-*.json`) à la racine du projet
+pour l'amorçage local du compte par défaut ; le plus récent de chaque type est chargé
+automatiquement (désactivable via `TVTIME_SEED_ON_EMPTY=0`).
+
+## Configuration (clé TMDB)
+
+1. Obtiens une clé gratuite : https://www.themoviedb.org/settings/api
+2. `cp .env.example .env` puis renseigne `TMDB_API_KEY` (le fichier `.env` est gitignoré).
 
 ## Lancement
 
 ```bash
-streamlit run app.py
+make dev              # API (:8000) + front React (:5173)
 ```
 
-## Enrichissement TMDB (optionnel)
-
-1. Obtiens une clé gratuite : https://www.themoviedb.org/settings/api
-2. `cp .streamlit/secrets.toml.example .streamlit/secrets.toml` puis renseigne `TMDB_API_KEY`.
-3. Dans la page *Enrichissement TMDB*, clique sur « Lancer l'enrichissement ».
-   Les résultats sont mis en cache dans `data/cache/` (une seule requête par titre).
+Voir **[DEPLOY.md](DEPLOY.md)** pour la mise en production (AlwaysData) et le workflow des branches.
 
 ## Notes méthodologiques
 

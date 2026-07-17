@@ -1,7 +1,8 @@
 """Client TMDB bas niveau : clé API, cache disque, appels HTTP de base.
 
-Clé API : variable d'environnement TMDB_API_KEY ou .streamlit/secrets.toml (TMDB_API_KEY).
-Obtenir une clé gratuite : https://www.themoviedb.org/settings/api
+Clé API : variable d'environnement `TMDB_API_KEY` (chargée depuis `.env` en dev via
+python-dotenv, ou fournie par l'hébergeur en prod). Clé gratuite :
+https://www.themoviedb.org/settings/api
 """
 from __future__ import annotations
 
@@ -15,20 +16,8 @@ BASE = "https://api.themoviedb.org/3"
 
 
 def get_api_key() -> str | None:
-    """Clé TMDB depuis la variable d'environnement, sinon un fichier secrets TOML."""
-    key = os.environ.get("TMDB_API_KEY")
-    if key:
-        return key
-    import tomllib
-    for path in ("secrets.toml", os.path.join(".streamlit", "secrets.toml")):
-        try:
-            with open(path, "rb") as f:
-                data = tomllib.load(f)
-        except (FileNotFoundError, tomllib.TOMLDecodeError):
-            continue
-        if data.get("TMDB_API_KEY"):
-            return data["TMDB_API_KEY"]
-    return None
+    """Clé TMDB depuis la variable d'environnement `TMDB_API_KEY` (voir .env / .env.example)."""
+    return os.environ.get("TMDB_API_KEY") or None
 
 
 def cache_path(name: str) -> str:
