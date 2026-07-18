@@ -39,25 +39,36 @@ def upcoming(user_id: int = Uid):
 
 
 def _do_sync(user_id: int, key: str):
+    """Enrichissement complet d'un utilisateur :
+    1) affiches + résolution des tmdb_id (indispensable à la suite) ;
+    2) prochains épisodes / nouveautés (nécessite les tmdb_id).
+    """
     job = _job_for(user_id)
     try:
-        res = db.sync_updates(user_id, key, progress=lambda f, t: job.update(progress=f))
+        db.sync_images(user_id, key, progress=lambda f, t: job.update(progress=f * 0.5))
+        res = db.sync_updates(user_id, key, progress=lambda f, t: job.update(progress=0.5 + f * 0.5))
         job["result"] = res
     finally:
         job.update(running=False, progress=1.0)
         deps.invalidate(user_id)
 
 
+def start_sync_job(background: BackgroundTasks, user_id: int) -> bool:
+    """Démarre la synchro TMDB en tâche de fond si possible. Réutilisé après un import.
+    Renvoie True si une synchro a été (ou est déjà) lancée, False si clé TMDB absente."""
+    if not enrich.get_api_key():
+        return False
+    job = _job_for(user_id)
+    if not job["running"]:
+        job.update(running=True, progress=0.0, result=None)
+        background.add_task(_do_sync, user_id, enrich.get_api_key())
+    return True
+
+
 @router.post("/sync")
 def start_sync(background: BackgroundTasks, user_id: int = Uid):
-    job = _job_for(user_id)
-    if job["running"]:
-        return {"running": True}
-    key = enrich.get_api_key()
-    if not key:
+    if not start_sync_job(background, user_id):
         raise HTTPException(503, "Clé TMDB absente")
-    job.update(running=True, progress=0.0, result=None)
-    background.add_task(_do_sync, user_id, key)
     return {"running": True}
 
 

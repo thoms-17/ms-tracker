@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 
 from src import db, loader
 
 from .. import deps
 from ..schemas import ImportResult
+from . import upcoming
 
 router = APIRouter(tags=["import"])
 
@@ -32,6 +33,7 @@ async def _parse(file: UploadFile, label: str) -> list:
 
 @router.post("/import/tvtime", response_model=ImportResult)
 async def import_tvtime(
+    background: BackgroundTasks,
     series: UploadFile | None = File(None),
     movies: UploadFile | None = File(None),
     user_id: int = Uid,
@@ -53,4 +55,7 @@ async def import_tvtime(
         raise HTTPException(400, "Import impossible : vérifie que ce sont bien tes exports TV Time.")
 
     deps.invalidate(user_id)
+    # Enrichit automatiquement les données importées (affiches, tmdb_id, prochainement)
+    # en tâche de fond — sans bloquer la réponse.
+    upcoming.start_sync_job(background, user_id)
     return ImportResult(**counts)
