@@ -11,8 +11,8 @@ export default defineConfig({
       // Icônes/manifest servis depuis public/ ; SW généré au build.
       includeAssets: ["favicon.ico", "apple-touch-icon.png"],
       manifest: {
-        name: "TV Time",
-        short_name: "TV Time",
+        name: "MS Tracker",
+        short_name: "MS Tracker",
         description: "Suivi de visionnage séries & films",
         lang: "fr",
         start_url: "/",

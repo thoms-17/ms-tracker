@@ -36,7 +36,7 @@ export default function ResetPassword() {
   if (reset.isSuccess) {
     return shell(
       <>
-        <h1 className="login-title">✅ Mot de passe mis à jour</h1>
+        <h1 className="login-title">Mot de passe mis à jour</h1>
         <p className="login-sub">Tu peux maintenant te connecter avec ton nouveau mot de passe.</p>
         <Link to="/" className="btn primary login-submit" style={{ textAlign: "center" }}>Se connecter</Link>
       </>,

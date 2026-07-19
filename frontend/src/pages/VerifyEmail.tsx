@@ -28,7 +28,7 @@ export default function VerifyEmail() {
         )}
         {verify.isSuccess && (
           <>
-            <h1 className="login-title">✅ Email vérifié</h1>
+            <h1 className="login-title">Email vérifié</h1>
             <p className="login-sub">
               Ton compte <strong>{verify.data.username}</strong> est activé. Tu peux maintenant te connecter.
             </p>

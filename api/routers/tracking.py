@@ -38,6 +38,12 @@ def watch_episode(episode_id: int, user_id: int = Uid):
     db.add_episode_watch(user_id, episode_id); deps.invalidate(user_id)
 
 
+@router.post("/episodes/{episode_id}/catch-up", status_code=204)
+def catch_up_episode(episode_id: int, user_id: int = Uid):
+    """Marque l'épisode + tous les précédents non vus de la saison (façon TV Time)."""
+    db.catch_up_episode(user_id, episode_id); deps.invalidate(user_id)
+
+
 @router.delete("/episodes/{episode_id}/watch", status_code=204)
 def unwatch_last_episode(episode_id: int, user_id: int = Uid):
     db.remove_last_episode_watch(user_id, episode_id); deps.invalidate(user_id)

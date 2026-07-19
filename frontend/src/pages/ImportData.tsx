@@ -25,7 +25,7 @@ export default function ImportData() {
 
   return (
     <div className="import-card">
-      <h2 className="import-title">👋 Bienvenue sur TV Time</h2>
+      <h2 className="import-title">Bienvenue sur MS Tracker</h2>
       <p className="import-sub">
         Ton suivi est vide. Importe ton export TV Time pour retrouver tout ton historique
         (séries, films, visionnages).
@@ -52,7 +52,7 @@ export default function ImportData() {
       {errorMsg && <p className="login-error">{errorMsg}</p>}
       {importMut.isSuccess && (
         <p className="import-ok">
-          ✅ Import terminé : {importMut.data.series} séries, {importMut.data.movies} films,
+          Import terminé : {importMut.data.series} séries, {importMut.data.movies} films,
           {" "}{importMut.data.watches} visionnages.
         </p>
       )}

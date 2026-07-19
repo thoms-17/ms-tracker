@@ -16,7 +16,7 @@ export default function Landing() {
   return (
     <div className="landing">
       <header className="landing-header">
-        <span className="landing-logo">📺 TV Time</span>
+        <span className="landing-logo">MS Tracker</span>
         <button className="btn primary" onClick={() => setShowLogin(true)}>Se connecter</button>
       </header>
 
@@ -34,9 +34,9 @@ export default function Landing() {
         )}
         {trending.data && (
           <>
-            <TrendingRow title="🔥 Séries en vogue" items={trending.data.tv}
+            <TrendingRow title="Séries en vogue" items={trending.data.tv}
               onPick={() => setShowLogin(true)} />
-            <TrendingRow title="🎬 Films en vogue" items={trending.data.movie}
+            <TrendingRow title="Films en vogue" items={trending.data.movie}
               onPick={() => setShowLogin(true)} />
           </>
         )}

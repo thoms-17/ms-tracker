@@ -105,6 +105,8 @@ export const api = {
 
   // mutations épisodes / séries
   watchEpisode: (id: number) => req(`/episodes/${id}/watch`, { method: "POST" }),
+  // marque l'épisode + tous les précédents non vus de la saison (façon TV Time)
+  catchUpEpisode: (id: number) => req(`/episodes/${id}/catch-up`, { method: "POST" }),
   rewatchEpisode: (id: number) => req(`/episodes/${id}/watch`, { method: "POST" }),
   removeEpisodeWatch: (id: number) => req(`/episodes/${id}/watch`, { method: "DELETE" }),
   unwatchEpisode: (id: number) => req(`/episodes/${id}/watches`, { method: "DELETE" }),

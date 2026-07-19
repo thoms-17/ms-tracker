@@ -48,7 +48,7 @@ export default function Register() {
   if (register.isSuccess) {
     return shell(
       <>
-        <h1 className="login-title">✉️ Vérifie ta boîte mail</h1>
+        <h1 className="login-title">Vérifie ta boîte mail</h1>
         <p className="login-sub">
           Compte créé. Un email de confirmation vient d'être envoyé à <strong>{emailValue}</strong>.
           Clique sur le lien (valable 24 h) pour activer ton compte.
@@ -65,8 +65,8 @@ export default function Register() {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={onSubmit}>
-        <h1 className="login-title">📺 Créer ton compte</h1>
-        <p className="login-sub">Tu as été invité à rejoindre TV Time.</p>
+        <h1 className="login-title">Créer ton compte</h1>
+        <p className="login-sub">Tu as été invité à rejoindre MS Tracker.</p>
 
         <label className="login-field">
           <span>Identifiant</span>

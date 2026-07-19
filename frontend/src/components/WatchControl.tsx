@@ -20,12 +20,11 @@ export default function WatchControl({
   const seen = count > 0;
   const btnRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
+  const [pos, setPos] = useState<Pos>({ top: 0, right: 0 });
 
   const onButton = () => {
     if (!seen) { onComplete(); return; } // non vu → marque vu directement
-    const r = btnRef.current!.getBoundingClientRect();
-    setPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+    setPos(menuPos(btnRef.current!.getBoundingClientRect()));
     setOpen((o) => !o);
   };
 
@@ -61,9 +60,33 @@ export default function WatchControl({
   );
 }
 
+type Pos = { top: number; right: number };
+
+// Menu à 3 options : hauteur ~réelle utilisée pour décider s'il tient sous le bouton.
+const MENU_H = 150;
+const GAP = 6;
+const EDGE = 8; // marge minimale avec les bords de l'écran
+
+/**
+ * Place le menu sous le bouton, mais bascule au-dessus s'il déborderait en bas
+ * (ex. épisode en bas d'écran sur mobile), puis borne la position dans le viewport
+ * pour qu'il reste toujours entièrement visible.
+ */
+function menuPos(r: DOMRect): Pos {
+  const vh = window.innerHeight;
+  const below = r.bottom + GAP;
+  const above = r.top - GAP - MENU_H;
+  // Sous le bouton par défaut ; au-dessus si ça déborde en bas et qu'il y a plus de place en haut.
+  let top = below;
+  if (below + MENU_H > vh - EDGE && r.top > vh - r.bottom) top = above;
+  top = Math.min(Math.max(top, EDGE), Math.max(EDGE, vh - MENU_H - EDGE));
+  const right = Math.max(EDGE, window.innerWidth - r.right);
+  return { top, right };
+}
+
 /** Menu popover rendu dans un portail (échappe à l'overflow/backdrop-filter des cartes). */
 function WatchMenu({ pos, onClose, children }: {
-  pos: { top: number; right: number }; onClose: () => void; children: ReactNode;
+  pos: Pos; onClose: () => void; children: ReactNode;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();

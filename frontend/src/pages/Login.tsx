@@ -44,7 +44,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
 
   return (
     <form onSubmit={onSubmit}>
-      <h1 className="login-title">📺 Connexion</h1>
+      <h1 className="login-title">Connexion</h1>
       <p className="login-sub">Accède à ton suivi.</p>
 
       <label className="login-field">
@@ -87,7 +87,7 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
   if (forgot.isSuccess) {
     return (
       <>
-        <h1 className="login-title">✉️ Vérifie ta boîte mail</h1>
+        <h1 className="login-title">Vérifie ta boîte mail</h1>
         <p className="login-sub">{forgot.data.message}</p>
         <button type="button" className="btn login-submit" onClick={onBack}>Retour à la connexion</button>
       </>

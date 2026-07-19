@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import type { SeriesSummary, SyncResult, UpcomingItem } from "../types";
+import Confetti from "../components/Confetti";
 import ImportData from "./ImportData";
 import VusTab from "./VusTab";
 
@@ -19,6 +20,15 @@ export default function Suivi() {
   const movies = useQuery({ queryKey: ["movies"], queryFn: api.movies });
   const watchTime = useQuery({ queryKey: ["watchTime"], queryFn: api.watchTime });
 
+  // Confettis « série terminée » : montés ici (le parent survit à la carte, qui quitte
+  // la liste « En cours » une fois complétée) et rendus dans un portail sur <body>.
+  const [confetti, setConfetti] = useState(false);
+  const celebrate = () => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    setConfetti(true);
+    setTimeout(() => setConfetti(false), 4000);
+  };
+
   if (series.isLoading || movies.isLoading) return <p className="muted">Chargement…</p>;
   if (series.error) return <p className="muted">Erreur API — le back FastAPI est-il lancé (port 8000) ?</p>;
 
@@ -31,6 +41,7 @@ export default function Suivi() {
 
   return (
     <>
+      {confetti && <Confetti />}
       {watchTime.data && (
         <div className="stats">
           <div className="stat">
@@ -62,7 +73,7 @@ export default function Suivi() {
 
       {tab === "encours" && (
         <div className="grid">
-          {inProgress.map((s) => <SeriesCard key={s.uuid} s={s} showNext />)}
+          {inProgress.map((s) => <SeriesCard key={s.uuid} s={s} showNext onComplete={celebrate} />)}
         </div>
       )}
 
@@ -73,12 +84,18 @@ export default function Suivi() {
   );
 }
 
-function SeriesCard({ s, showNext }: { s: SeriesSummary; showNext?: boolean }) {
+function SeriesCard({ s, showNext, onComplete }: {
+  s: SeriesSummary; showNext?: boolean; onComplete?: () => void;
+}) {
   const qc = useQueryClient();
   const url = posterUrl(s.poster_path);
   const next = useMutation({
     mutationFn: () => api.markNext(s.uuid),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["series"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["series"] });
+      // Ce visionnage était-il le dernier ? → série terminée : confettis.
+      if (s.n_episodes > 0 && s.n_watched + 1 >= s.n_episodes) onComplete?.();
+    },
   });
   return (
     <div className="card">
@@ -153,6 +170,15 @@ function SyncControls() {
   );
 }
 
+/** "2026-07-25" → "sam. 25 juil. 2026" (format français, sans décalage de fuseau). */
+function frDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return new Date(y, m - 1, d).toLocaleDateString("fr-FR", {
+    weekday: "short", day: "numeric", month: "short", year: "numeric",
+  });
+}
+
 function Prochainement() {
   const up = useQuery({ queryKey: ["upcoming"], queryFn: api.upcoming });
   const items = up.data ?? [];
@@ -185,7 +211,7 @@ function Prochainement() {
                     <div className="muted">{i.name}</div>
                   </div>
                   <div style={{ marginLeft: "auto", textAlign: "right" }}>
-                    <div>{i.air_date}</div>
+                    <div>{frDate(i.air_date)}</div>
                     <div className="muted">
                       {i.days === 0 ? "aujourd'hui" : i.days === 1 ? "demain" : `dans ${i.days} j`}
                     </div>

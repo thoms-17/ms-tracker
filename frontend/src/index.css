@@ -276,20 +276,54 @@ button.btn:disabled { opacity: .5; cursor: default; }
   border-radius: 10px; padding: 1px 9px; white-space: nowrap; font-variant-numeric: tabular-nums;
 }
 
+/* Boîte de dialogue centrée (ex. proposition de rattrapage des épisodes) */
+.modal-layer {
+  position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+}
+.modal {
+  width: 100%; max-width: 380px; padding: 20px;
+  background: var(--glass-strong); border: 1px solid var(--glass-brd); border-radius: 18px;
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  box-shadow: var(--glass-shadow);
+  animation: menu-in .12s ease;
+}
+.modal-title { margin: 0 0 8px; font-size: 17px; }
+.modal-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.modal-actions .btn { flex: 1; min-width: 130px; text-align: center; }
+
+/* Confettis (série terminée) — purement décoratif, ne bloque pas les clics */
+.confetti { position: fixed; inset: 0; z-index: 200; pointer-events: none; overflow: hidden; }
+.confetti-piece {
+  position: absolute; top: -12px; border-radius: 2px; opacity: 0;
+  animation-name: confetti-fall; animation-timing-function: linear; animation-fill-mode: forwards;
+}
+@keyframes confetti-fall {
+  0%   { transform: translate(0, -12px) rotate(0); opacity: 1; }
+  100% { transform: translate(var(--drift, 0), 104vh) rotate(var(--rot, 360deg)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+}
+
 .upcoming-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .upcoming-row img { width: 48px; border-radius: 4px; }
 .muted { color: var(--muted); }
 
-/* Barre de recherche */
-.searchbox { position: relative; flex: 1; max-width: 480px; }
-.searchbox > input {
+/* Barre de recherche (le .search-panel est aussi rendu dans l'overlay mobile, hors .searchbox) */
+.searchbox { position: relative; flex: 1; max-width: 480px; display: flex; }
+.search-scrim { display: none; } /* voile derrière le panneau mobile */
+.search-panel { position: relative; flex: 1; }
+.search-panel input {
   width: 100%; padding: 10px 14px; border-radius: 999px;
   background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text); font-size: 14px;
   backdrop-filter: blur(10px) saturate(150%);
   -webkit-backdrop-filter: blur(10px) saturate(150%);
 }
-.searchbox > input:focus { outline: none; border-color: rgba(57, 135, 229, 0.6); }
-.searchbox .results {
+.search-panel input:focus { outline: none; border-color: rgba(57, 135, 229, 0.6); }
+.search-panel .results {
   position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 20;
   background: var(--glass-strong); border: 1px solid var(--glass-brd); border-radius: 14px; overflow: hidden;
   max-height: 60vh; overflow-y: auto;
@@ -297,14 +331,14 @@ button.btn:disabled { opacity: .5; cursor: default; }
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
   box-shadow: var(--glass-shadow);
 }
-.searchbox .res {
+.search-panel .res {
   display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; font-size: 14px;
 }
-.searchbox .res:hover { background: rgba(255,255,255,0.05); }
-.searchbox .res img { width: 32px; height: 48px; object-fit: cover; border-radius: 3px; }
-.searchbox .res .thumb { width: 32px; text-align: center; }
-.searchbox .res-title { flex: 1; }
-.searchbox .tag {
+.search-panel .res:hover { background: rgba(255,255,255,0.05); }
+.search-panel .res img { width: 32px; height: 48px; object-fit: cover; border-radius: 3px; }
+.search-panel .res .thumb { width: 32px; text-align: center; }
+.search-panel .res-title { flex: 1; }
+.search-panel .tag {
   font-size: 11px; color: var(--good); border: 1px solid var(--good);
   border-radius: 10px; padding: 1px 8px; white-space: nowrap;
 }
@@ -371,6 +405,13 @@ button.btn:disabled { opacity: .5; cursor: default; }
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
   color: var(--muted);
 }
+.spinner {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 3px solid var(--glass-brd);
+  border-top-color: var(--text);
+  animation: spinner-rotate 0.8s linear infinite;
+}
+@keyframes spinner-rotate { to { transform: rotate(360deg); } }
 
 .login-wrap {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
@@ -555,9 +596,11 @@ button.btn:disabled { opacity: .5; cursor: default; }
   }
   .bn-item {
     display: flex; flex-direction: column; align-items: center; gap: 3px;
-    padding: 8px 16px; border-radius: 20px;
+    padding: 8px 12px; border-radius: 20px;
     color: var(--muted); font-size: 11px; font-weight: 600; line-height: 1;
     transition: color .2s ease, background .2s ease;
+    /* reset pour l'item <button> (loupe) — sans effet sur les <a> */
+    background: none; border: none; font-family: inherit; cursor: pointer;
   }
   .bn-item svg { width: 22px; height: 22px; }
   .bn-item.active {
@@ -566,8 +609,24 @@ button.btn:disabled { opacity: .5; cursor: default; }
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 4px 14px rgba(57, 135, 229, 0.4);
   }
 
-  /* La recherche prend toute la largeur disponible */
-  .searchbox { max-width: none; }
+  /* Recherche : pas de champ dans le header ; on y accède par la loupe de la barre du bas */
+  .searchbox { display: none; }
+
+  /* Overlay porté sur <body> : au-dessus du header (z:10) et de la barre du bas (z:50) */
+  .search-overlay { position: fixed; inset: 0; z-index: 100; }
+  .search-scrim {
+    display: block; position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  }
+  .search-panel.expanded {
+    display: block; position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+  }
+  /* 16px min. : empêche l'auto-zoom d'iOS Safari au focus du champ */
+  .search-panel.expanded input { box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); font-size: 16px; }
 
   /* Header compact : on garde l'avatar, on masque le nom */
   .usermenu-name { display: none; }

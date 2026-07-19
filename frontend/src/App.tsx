@@ -14,6 +14,7 @@ import MoviePreview from "./pages/MoviePreview";
 
 export default function App() {
   const qc = useQueryClient();
+  const [searchOpen, setSearchOpen] = useState(false); // overlay de recherche (loupe mobile)
   const me = useQuery({
     queryKey: ["me"],
     queryFn: api.me,
@@ -28,7 +29,11 @@ export default function App() {
     return () => window.removeEventListener("auth:unauthorized", onUnauth);
   }, [qc]);
 
-  if (me.isLoading) return <div className="app-loading">Chargement…</div>;
+  if (me.isLoading) return (
+    <div className="app-loading">
+      <span className="spinner" role="status" aria-label="Chargement" />
+    </div>
+  );
   if (!me.data) {
     // Non connecté : vitrine + pages publiques d'inscription / vérification d'email.
     return (
@@ -44,8 +49,8 @@ export default function App() {
   return (
     <>
       <header>
-        <Link to="/"><h1>TV Time</h1></Link>
-        <SearchBar />
+        <Link to="/"><h1>MS Tracker</h1></Link>
+        <SearchBar expanded={searchOpen} setExpanded={setSearchOpen} />
         <UserMenu username={me.data.username} />
       </header>
       <main>
@@ -56,7 +61,7 @@ export default function App() {
           <Route path="/tmdb/movie/:tmdbId" element={<MoviePreview />} />
         </Routes>
       </main>
-      <BottomNav />
+      <BottomNav onSearch={() => setSearchOpen(true)} />
     </>
   );
 }
@@ -109,7 +114,7 @@ const NAV = [
 ] as const;
 
 /** Barre de navigation flottante (mobile) — liquid glass, présente sur toutes les pages. */
-function BottomNav() {
+function BottomNav({ onSearch }: { onSearch: () => void }) {
   const [params] = useSearchParams();
   const { pathname } = useLocation();
   const onHome = pathname === "/";
@@ -127,6 +132,10 @@ function BottomNav() {
           <span>{label}</span>
         </Link>
       ))}
+      <button type="button" className="bn-item" onClick={onSearch}>
+        <SearchIcon />
+        <span>Rechercher</span>
+      </button>
     </nav>
   );
 }
@@ -157,6 +166,15 @@ function CalendarIcon() {
       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="3" y="4.5" width="18" height="16" rx="3" />
       <path d="M3 9h18M8 3v3M16 3v3" />
+    </svg>
+  );
+}
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
     </svg>
   );
 }

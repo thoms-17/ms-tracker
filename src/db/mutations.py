@@ -22,6 +22,35 @@ def add_episode_watch(user_id: int, episode_id: int, when=None) -> None:
     conn.commit(); conn.close()
 
 
+def catch_up_episode(user_id: int, episode_id: int) -> int:
+    """Marque l'épisode ET tous les épisodes précédents non vus de sa saison.
+
+    Reprend le comportement TV Time : cocher l'épisode 10 alors que seuls 1→3 sont vus
+    rattrape 4→10 (un visionnage pour chaque épisode encore à 0). Les épisodes déjà vus
+    ne sont pas retouchés. Renvoie le nombre d'épisodes nouvellement marqués.
+    """
+    conn = get_conn()
+    if not owns_episode(conn, episode_id, user_id):
+        conn.close(); raise NotOwned()
+    series_uuid, season, epnum = conn.execute(
+        "SELECT series_uuid, season_number, episode_number FROM episodes WHERE id=?",
+        (episode_id,),
+    ).fetchone()
+    ids = [r[0] for r in conn.execute(
+        "SELECT id FROM episodes WHERE series_uuid=? AND season_number=? AND episode_number<=?",
+        (series_uuid, season, epnum),
+    ).fetchall()]
+    now = fmt(pd.Timestamp.now())
+    marked = 0
+    for ep_id in ids:
+        has = conn.execute("SELECT COUNT(*) FROM watches WHERE episode_id=?", (ep_id,)).fetchone()[0]
+        if has == 0:
+            conn.execute("INSERT INTO watches(target_type,episode_id,watched_at) VALUES ('episode',?,?)", (ep_id, now))
+            marked += 1
+    conn.commit(); conn.close()
+    return marked
+
+
 def remove_last_episode_watch(user_id: int, episode_id: int) -> None:
     """Retire le visionnage le plus récent (décrémente le compteur)."""
     conn = get_conn()
