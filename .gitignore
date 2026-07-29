@@ -4,9 +4,10 @@ __pycache__/
 secrets.toml
 .env
 data/cache/*.json
-data/tvtime.db
-data/tvtime.db-wal
-data/tvtime.db-shm
+# Aucune base SQLite dans git (elles contiennent des données personnelles)
+data/*.db
+data/*.db-wal
+data/*.db-shm
 data/backups/
 .DS_Store
 # Exports TV Time perso (données personnelles) — ne jamais committer
