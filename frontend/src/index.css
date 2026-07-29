@@ -376,6 +376,7 @@ button.btn:disabled { opacity: .5; cursor: default; }
 }
 .empty-title { margin: 0; font-size: 22px; }
 .empty-state p { margin: 0; font-size: 14px; line-height: 1.5; }
+.empty-state .btn { align-self: center; margin-top: 4px; padding: 10px 20px; font-size: 14px; }
 
 /* ------------------------------------------------------------------ */
 /* Authentification : chargement, page de login, menu profil          */

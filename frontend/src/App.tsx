@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "./api";
+import { api, ApiError } from "./api";
 import SearchBar from "./components/SearchBar";
 import Spinner from "./components/Spinner";
 import Landing from "./pages/Landing";
@@ -19,8 +19,13 @@ export default function App() {
   const me = useQuery({
     queryKey: ["me"],
     queryFn: api.me,
-    retry: false,
     staleTime: Infinity,
+    // Au réveil de la PWA (iOS), la 1re requête part souvent avant que le réseau
+    // soit prêt. Un échec réseau ne veut pas dire « déconnecté » : on réessaie.
+    // Seul un 401 est une vraie fin de session → inutile d'insister.
+    retry: (failureCount, error) =>
+      !(error instanceof ApiError && error.status === 401) && failureCount < 3,
+    retryDelay: (n) => Math.min(1000 * 2 ** n, 5000),
   });
 
   // Session expirée en cours d'usage (401 sur une requête) → repasse au login.
@@ -31,6 +36,11 @@ export default function App() {
   }, [qc]);
 
   if (me.isLoading) return <Spinner full />;
+  // Échec réseau (≠ 401) : on ne déconnecte pas l'utilisateur pour autant.
+  // Sans ça, un simple réveil hors ligne renverrait vers l'écran de connexion.
+  if (me.error && !(me.error instanceof ApiError && me.error.status === 401)) {
+    return <OfflineGate onRetry={() => me.refetch()} pending={me.isFetching} />;
+  }
   if (!me.data) {
     // Non connecté : vitrine + pages publiques d'inscription / vérification d'email.
     return (
@@ -60,6 +70,27 @@ export default function App() {
       </main>
       <BottomNav onSearch={() => setSearchOpen(true)} />
     </>
+  );
+}
+
+/**
+ * Serveur injoignable au démarrage (réseau coupé, PWA qui se réveille).
+ * On reste sur un écran neutre : la session est probablement toujours valide,
+ * ce serait une erreur de renvoyer l'utilisateur vers la page de connexion.
+ */
+function OfflineGate({ onRetry, pending }: { onRetry: () => void; pending: boolean }) {
+  return (
+    <div className="app-loading">
+      <div className="empty-state">
+        <h2 className="empty-title">Connexion indisponible</h2>
+        <p className="muted">
+          Impossible de joindre le serveur. Vérifie ta connexion — tu resteras connecté.
+        </p>
+        <button className="btn primary" onClick={onRetry} disabled={pending}>
+          {pending ? "Nouvelle tentative…" : "Réessayer"}
+        </button>
+      </div>
+    </div>
   );
 }
 
