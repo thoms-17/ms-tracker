@@ -17,7 +17,6 @@ from .auth import (RegistrationError, create_email_token, create_invite,
                    set_password, user_id_for_session, verify_credentials,
                    verify_email_token)
 from .connection import DB_PATH, NotOwned, get_conn
-from .importer import import_tvtime, user_has_data
 from .mutations import (add_episode_watch, add_movie_watch, catch_up_episode,
                         mark_season, remove_last_episode_watch,
                         remove_last_movie_watch, remove_season_watch,
@@ -52,6 +51,4 @@ __all__ = [
     # mot de passe oublié
     "get_active_user_by_email", "create_reset_token", "reset_token_valid",
     "reset_password",
-    # import de données
-    "import_tvtime", "user_has_data",
 ]

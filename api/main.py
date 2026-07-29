@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src import db
 
-from .routers import auth, discover, imports, stats, tracking, upcoming
+from .routers import auth, discover, stats, tracking, upcoming
 
 app = FastAPI(
     title="TV Time Analytics API",
@@ -47,7 +47,6 @@ if _origins:
     )
 
 app.include_router(auth.router, prefix="/api")
-app.include_router(imports.router, prefix="/api")
 app.include_router(tracking.router, prefix="/api")
 app.include_router(discover.router, prefix="/api")
 app.include_router(upcoming.router, prefix="/api")

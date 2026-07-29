@@ -42,13 +42,6 @@ class ValidResponse(BaseModel):
     valid: bool
 
 
-class ImportResult(BaseModel):
-    series: int
-    episodes: int
-    movies: int
-    watches: int
-
-
 class TrendingItem(BaseModel):
     media_type: str
     tmdb_id: int

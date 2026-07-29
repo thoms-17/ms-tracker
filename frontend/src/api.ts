@@ -1,5 +1,4 @@
 import type {
-  ImportResult,
   MovieItem,
   SearchItem,
   SeriesDetail,
@@ -83,14 +82,6 @@ export const api = {
 
   // vitrine publique (avant connexion)
   trending: () => req<Trending>("/discover/trending"),
-
-  // import d'un export TV Time (multipart)
-  importTvtime: (files: { series?: File; movies?: File }) => {
-    const fd = new FormData();
-    if (files.series) fd.append("series", files.series);
-    if (files.movies) fd.append("movies", files.movies);
-    return req<ImportResult>("/import/tvtime", { method: "POST", body: fd });
-  },
 
   // lectures
   series: () => req<SeriesSummary[]>("/series"),

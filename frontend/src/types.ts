@@ -133,13 +133,6 @@ export interface Trending {
   movie: TrendingItem[];
 }
 
-export interface ImportResult {
-  series: number;
-  episodes: number;
-  movies: number;
-  watches: number;
-}
-
 export interface PreviewSeason {
   season_number: number;
   episodes: { episode_number: number; name: string | null }[];

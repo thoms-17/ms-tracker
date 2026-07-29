@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import type { SeriesSummary, SyncResult, UpcomingItem } from "../types";
 import Confetti from "../components/Confetti";
-import ImportData from "./ImportData";
 import VusTab from "./VusTab";
 
 type Tab = "encours" | "vus" | "prochainement";
@@ -33,8 +32,8 @@ export default function Suivi() {
   if (series.error) return <p className="muted">Erreur API — le back FastAPI est-il lancé (port 8000) ?</p>;
 
   const all = series.data ?? [];
-  // Compte sans aucune donnée → on met en avant le module d'import.
-  if (all.length === 0 && (movies.data?.length ?? 0) === 0) return <ImportData />;
+  // Compte sans aucune donnée → on oriente vers la recherche pour démarrer son suivi.
+  if (all.length === 0 && (movies.data?.length ?? 0) === 0) return <EmptySuivi />;
   const inProgress = all.filter((s) => s.n_watched > 0 && s.completion < 1)
     .sort((a, b) => (b.last_watched ?? "").localeCompare(a.last_watched ?? ""));
   const completed = all.filter((s) => s.completion >= 1);
@@ -81,6 +80,18 @@ export default function Suivi() {
 
       {tab === "prochainement" && <Prochainement />}
     </>
+  );
+}
+
+/** Accueil d'un compte encore vide : on renvoie vers la recherche. */
+function EmptySuivi() {
+  return (
+    <div className="empty-state">
+      <h2 className="empty-title">Bienvenue sur MS Tracker</h2>
+      <p className="muted">
+        Ton suivi est vide. Cherche une série ou un film pour commencer à suivre tes visionnages.
+      </p>
+    </div>
   );
 }
 
