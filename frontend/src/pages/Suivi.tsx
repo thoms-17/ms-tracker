@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import type { SeriesSummary, SyncResult, UpcomingItem } from "../types";
 import Confetti from "../components/Confetti";
+import Spinner from "../components/Spinner";
 import VusTab from "./VusTab";
 
 type Tab = "encours" | "vus" | "prochainement";
@@ -28,7 +29,7 @@ export default function Suivi() {
     setTimeout(() => setConfetti(false), 4000);
   };
 
-  if (series.isLoading || movies.isLoading) return <p className="muted">Chargement…</p>;
+  if (series.isLoading || movies.isLoading) return <Spinner />;
   if (series.error) return <p className="muted">Erreur API — le back FastAPI est-il lancé (port 8000) ?</p>;
 
   const all = series.data ?? [];
@@ -201,7 +202,7 @@ function Prochainement() {
   return (
     <>
       <SyncControls />
-      {up.isLoading && <p className="muted">Chargement…</p>}
+      {up.isLoading && <Spinner />}
       {!up.isLoading && items.length === 0 && (
         <p className="muted">Aucune sortie annoncée. Lance une vérification pour rafraîchir.</p>
       )}

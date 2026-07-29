@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
+import Spinner from "../components/Spinner";
 import WatchProviders from "../components/WatchProviders";
 
 export default function SeriesPreview() {
@@ -33,7 +34,7 @@ export default function SeriesPreview() {
     }
   }, [prev.data, sel]);
 
-  if (prev.isLoading || prev.data?.tracked_uuid) return <p className="muted">Chargement…</p>;
+  if (prev.isLoading || prev.data?.tracked_uuid) return <Spinner />;
   if (!prev.data) return <p className="muted">Série introuvable sur TMDB.</p>;
 
   const p = prev.data;

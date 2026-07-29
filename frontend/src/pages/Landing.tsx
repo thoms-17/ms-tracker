@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import type { TrendingItem } from "../types";
+import Spinner from "../components/Spinner";
 import Login from "./Login";
 
 /** Vitrine publique (non connecté) : séries & films en vogue + accès à la connexion. */
@@ -28,7 +29,7 @@ export default function Landing() {
           </p>
         </section>
 
-        {trending.isLoading && <p className="muted">Chargement des tendances…</p>}
+        {trending.isLoading && <Spinner />}
         {trending.error && (
           <p className="muted">Tendances indisponibles pour le moment.</p>
         )}

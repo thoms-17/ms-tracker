@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import Confetti from "../components/Confetti";
+import Spinner from "../components/Spinner";
 import WatchControl from "../components/WatchControl";
 import WatchProviders from "../components/WatchProviders";
 import type { EpisodeItem, SeasonGroup } from "../types";
@@ -36,7 +37,7 @@ export default function SeriesDetail() {
     qc.invalidateQueries({ queryKey: ["watchTime"] });
   };
 
-  if (detail.isLoading) return <p className="muted">Chargement…</p>;
+  if (detail.isLoading) return <Spinner />;
   if (detail.error || !detail.data) return <p className="muted">Série introuvable.</p>;
   const s = detail.data;
   const url = posterUrl(s.poster_path, true);

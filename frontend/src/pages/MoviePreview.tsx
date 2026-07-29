@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
+import Spinner from "../components/Spinner";
 import WatchProviders from "../components/WatchProviders";
 
 export default function MoviePreview() {
@@ -22,7 +23,7 @@ export default function MoviePreview() {
     onSuccess: invalidate,
   });
 
-  if (prev.isLoading) return <p className="muted">Chargement…</p>;
+  if (prev.isLoading) return <Spinner />;
   if (!prev.data) return <p className="muted">Film introuvable sur TMDB.</p>;
   const m = prev.data;
   const url = posterUrl(m.poster_path, true);

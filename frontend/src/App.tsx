@@ -3,6 +3,7 @@ import { Link, Route, Routes, useLocation, useSearchParams } from "react-router-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import SearchBar from "./components/SearchBar";
+import Spinner from "./components/Spinner";
 import Landing from "./pages/Landing";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -29,11 +30,7 @@ export default function App() {
     return () => window.removeEventListener("auth:unauthorized", onUnauth);
   }, [qc]);
 
-  if (me.isLoading) return (
-    <div className="app-loading">
-      <span className="spinner" role="status" aria-label="Chargement" />
-    </div>
-  );
+  if (me.isLoading) return <Spinner full />;
   if (!me.data) {
     // Non connecté : vitrine + pages publiques d'inscription / vérification d'email.
     return (
