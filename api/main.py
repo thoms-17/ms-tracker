@@ -61,7 +61,7 @@ def _not_owned(request: Request, exc: db.NotOwned):
 
 @app.on_event("startup")
 def _startup():
-    db.init_db(".")  # crée/migre la base au démarrage
+    db.init_db()  # crée/migre la base au démarrage
 
 
 @app.get("/api/health")

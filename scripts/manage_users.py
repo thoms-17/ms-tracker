@@ -148,7 +148,7 @@ def main():
     sp.add_argument("email")
     sp.set_defaults(func=cmd_set_email)
 
-    db.init_db(".")  # s'assure que le schéma existe
+    db.init_db()  # s'assure que le schéma existe
     args = p.parse_args()
     args.func(args)
 

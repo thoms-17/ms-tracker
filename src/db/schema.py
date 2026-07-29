@@ -1,4 +1,4 @@
-"""Schéma, migrations et amorçage (seeding) de la base depuis les JSON TV Time."""
+"""Schéma et migrations de la base."""
 from __future__ import annotations
 
 import os
@@ -6,11 +6,10 @@ import sqlite3
 
 import pandas as pd
 
-from .. import loader
 from .connection import ensure_column, fmt, get_conn
 
 # Utilisateur auquel sont rattachées les données existantes lors de la migration
-# multi-utilisateur (et le seeding initial). Surchargeable par variable d'env.
+# multi-utilisateur. Surchargeable par variable d'env.
 DEFAULT_USERNAME = os.environ.get("TVTIME_DEFAULT_USER", "thom")
 
 SCHEMA = """
@@ -114,8 +113,8 @@ CREATE INDEX IF NOT EXISTS idx_ep_series ON episodes(series_uuid);
 """
 
 
-def init_db(root: str = ".") -> None:
-    """Crée le schéma, applique les migrations, et amorce depuis les JSON si vide."""
+def init_db() -> None:
+    """Crée le schéma et applique les migrations."""
     conn = get_conn()
     conn.executescript(SCHEMA)
     # Migrations pour bases créées avant l'ajout des durées / affiches
@@ -137,15 +136,6 @@ def init_db(root: str = ".") -> None:
     )
     _migrate_multiuser(conn)
     conn.commit()
-    empty = conn.execute("SELECT COUNT(*) FROM series").fetchone()[0] == 0
-    empty = empty and conn.execute("SELECT COUNT(*) FROM movies").fetchone()[0] == 0
-    # Amorçage : uniquement en local, si les JSON sont présents ET non désactivé.
-    # En prod (pas de JSON, TVTIME_SEED_ON_EMPTY=0) → base vierge, aucun crash.
-    seed_on = os.environ.get("TVTIME_SEED_ON_EMPTY", "1") == "1"
-    have_files = bool(loader._find_latest("tvtime-movies-*.json", root)
-                      and loader._find_latest("tvtime-series-*.json", root))
-    if empty and seed_on and have_files:
-        _seed_from_json(conn, get_or_create_user(conn, DEFAULT_USERNAME), root)
     conn.close()
 
 
@@ -202,53 +192,3 @@ def _migrate_multiuser(conn: sqlite3.Connection) -> None:
             [(uid, k, v) for k, v in rows],
         )
         conn.execute("DROP TABLE _meta_old")
-
-
-def _seed_from_json(conn: sqlite3.Connection, user_id: int, root: str) -> None:
-    movies = loader.load_movies(loader._find_latest("tvtime-movies-*.json", root))
-    episodes, series = loader.load_series(loader._find_latest("tvtime-series-*.json", root))
-
-    conn.executemany(
-        "INSERT OR IGNORE INTO series(series_uuid,user_id,title,status,is_favorite,imdb_id,tvdb_id,created_at,source)"
-        " VALUES (?,?,?,?,?,?,?,?, 'tvtime')",
-        [
-            (r.series_uuid, user_id, r.series_title, r.status, int(r.is_favorite),
-             r.imdb_id, r.tvdb_id, fmt(r.created_at))
-            for r in series.itertuples()
-        ],
-    )
-    # Épisodes + visionnages (une ligne watches par vue, cf. modèle du package)
-    watch_rows = []
-    for e in episodes.itertuples():
-        cur = conn.execute(
-            "INSERT OR IGNORE INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,imdb_id,tvdb_id)"
-            " VALUES (?,?,?,?,?,?,?,?)",
-            (e.series_uuid, int(e.season_number), int(e.episode_number), e.episode_name,
-             int(e.special), int(e.is_specials), e.imdb_id, e.tvdb_id),
-        )
-        n = int(e.watched_count or 0)
-        if n > 0:
-            watch_rows += [("episode", cur.lastrowid, None, fmt(e.watched_at))] * n
-    conn.executemany(
-        "INSERT INTO watches(target_type,episode_id,movie_uuid,watched_at) VALUES (?,?,?,?)",
-        watch_rows,
-    )
-    conn.executemany(
-        "INSERT OR IGNORE INTO movies(uuid,user_id,title,year,imdb_id,tvdb_id,is_favorite,created_at,source)"
-        " VALUES (?,?,?,?,?,?,?,?, 'tvtime')",
-        [
-            (m.uuid, user_id, m.title, None if pd.isna(m.year) else int(m.year), m.imdb_id, m.tvdb_id,
-             int(m.is_favorite), fmt(m.created_at))
-            for m in movies.itertuples()
-        ],
-    )
-    mv_watch = []
-    for m in movies.itertuples():
-        n = int(m.watched_count or 0)
-        if n > 0:
-            mv_watch += [("movie", None, m.uuid, fmt(m.watched_at))] * n
-    conn.executemany(
-        "INSERT INTO watches(target_type,episode_id,movie_uuid,watched_at) VALUES (?,?,?,?)",
-        mv_watch,
-    )
-    conn.commit()

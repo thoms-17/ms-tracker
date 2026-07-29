@@ -12,7 +12,6 @@ Aucun secret dans git.
 | Cookies | `TVTIME_SECURE_COOKIES=0` | `=1` (HTTPS) |
 | Emails | console (pas de SMTP) | SMTP réel |
 | Base | `./data/tvtime.db` | `TVTIME_DB_PATH` = chemin **absolu** persistant |
-| Seeding JSON | activé si fichiers présents | `TVTIME_SEED_ON_EMPTY=0` |
 
 > ⚠️ **Toujours 1 worker** (le défaut). L'état (cache dataset, job de synchro, rate-limit)
 > vit en mémoire du process : plusieurs workers = incohérences.
@@ -74,7 +73,6 @@ git push origin prod
    ```
    TMDB_API_KEY=…
    TVTIME_DB_PATH=/home/<compte>/tvtime/data/tvtime.db
-   TVTIME_SEED_ON_EMPTY=0
    TVTIME_SECURE_COOKIES=1
    TVTIME_BASE_URL=https://<app>.alwaysdata.net
    TVTIME_SMTP_HOST=…  TVTIME_SMTP_PORT=587  TVTIME_SMTP_USER=…  TVTIME_SMTP_PASSWORD=…  TVTIME_SMTP_FROM=…

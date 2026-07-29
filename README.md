@@ -43,8 +43,8 @@ Toutes les analyses lisent la même base : marquer un épisode met à jour les s
 
 ## Architecture des données
 
-- **Source de vérité** : base SQLite `data/tvtime.db`, initialisée une fois depuis tes
-  JSON au premier lancement (les fichiers `tvtime-*.json` restent intacts).
+- **Source de vérité** : base SQLite `data/tvtime.db`, créée au premier lancement.
+  Les titres sont ajoutés depuis la recherche TMDB.
 - **Modèle** : chaque visionnage est une ligne dans la table `watches` → les revisionnages
   illimités et leur historique sont natifs. `src/db.py` reconstitue les DataFrames d'analyse
   et expose les mutations (marquer vu, +1 revu, ajouter un titre…).
@@ -54,10 +54,6 @@ Toutes les analyses lisent la même base : marquer un épisode met à jour les s
 ```bash
 make install          # venv + dépendances back, puis npm install côté front
 ```
-
-Place tes exports (`tvtime-movies-*.json`, `tvtime-series-*.json`) à la racine du projet
-pour l'amorçage local du compte par défaut ; le plus récent de chaque type est chargé
-automatiquement (désactivable via `TVTIME_SEED_ON_EMPTY=0`).
 
 ## Configuration (clé TMDB)
 
@@ -97,7 +93,7 @@ frontend/            # Front React + TypeScript (Vite)
   src/pages/         #   Suivi, SeriesDetail, SeriesPreview, MoviePreview
   src/components/    #   SearchBar (recherche à la frappe)
 src/                 # Cœur métier (aucune dépendance framework UI)
-  loader.py          #   parsing JSON TV Time (seeding)
+  loader.py          #   structures Dataset + événements de visionnage
   stats.py           #   calcul du temps de visionnage
   db/                #   base SQLite : connection · schema · queries · mutations · tmdb
   enrich/            #   client TMDB : client · api · library

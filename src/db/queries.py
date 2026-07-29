@@ -8,9 +8,9 @@ from .connection import get_conn
 from .schema import init_db
 
 
-def load_dataset(user_id: int, root: str = ".") -> loader.Dataset:
+def load_dataset(user_id: int) -> loader.Dataset:
     """Reconstitue movies/episodes/series/events depuis la base, pour un utilisateur donné."""
-    init_db(root)
+    init_db()
     conn = get_conn()
 
     movies = pd.read_sql_query(

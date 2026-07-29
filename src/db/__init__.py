@@ -3,7 +3,7 @@
 Modèle : chaque visionnage est une ligne dans `watches`. Le nombre de visionnages
 d'un épisode/film = nombre de lignes → les revisionnages illimités sont natifs.
 
-Le package est découpé par responsabilité (connexion, schéma/seeding, lectures,
+Le package est découpé par responsabilité (connexion, schéma/migrations, lectures,
 mutations, TMDB). Ce module réexporte l'API publique : les appelants utilisent
 simplement `from src import db` puis `db.load_dataset()`, `db.add_episode_watch()`, etc.
 """

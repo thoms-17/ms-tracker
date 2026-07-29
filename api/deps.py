@@ -50,7 +50,7 @@ _cache: dict[int, Dataset] = {}
 def get_dataset(user_id: int) -> Dataset:
     ds = _cache.get(user_id)
     if ds is None:
-        ds = db.load_dataset(user_id, ".")
+        ds = db.load_dataset(user_id)
         _cache[user_id] = ds
     return ds
 
