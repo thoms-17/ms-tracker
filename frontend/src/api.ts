@@ -83,6 +83,9 @@ export const api = {
   // vitrine publique (avant connexion)
   trending: () => req<Trending>("/discover/trending"),
 
+  // version du back en cours d'exécution (pour la comparer à celle du front)
+  version: () => req<{ version: string; git_sha: string }>("/version"),
+
   // lectures
   series: () => req<SeriesSummary[]>("/series"),
   seriesDetail: (uuid: string) => req<SeriesDetail>(`/series/${uuid}`),

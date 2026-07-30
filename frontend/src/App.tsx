@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "./api";
 import SearchBar from "./components/SearchBar";
 import Spinner from "./components/Spinner";
+import VersionInfo from "./components/VersionInfo";
 import Landing from "./pages/Landing";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -128,6 +129,7 @@ function UserMenu({ username }: { username: string }) {
             >
               Se déconnecter
             </button>
+            <VersionInfo />
           </div>
         </>
       )}

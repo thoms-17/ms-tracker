@@ -99,6 +99,25 @@ cd frontend && npm ci && npm run build && cd ..        # si le front a changé
 # puis « Redémarrer » le site depuis l'admin AlwaysData
 ```
 
+## 5 bis. Numéro de version
+
+Le numéro lisible vit dans **`/VERSION`** à la racine (format `MAJEUR.MINEUR.CORRECTIF`),
+source unique lue par le front **et** le back. Pour publier une version : édite ce
+fichier, commit, puis déploie.
+
+Front et back exposent leur identité séparément — c'est volontaire :
+
+| | Origine | Figé quand ? |
+|---|---|---|
+| Front | constantes injectées par Vite (`define`) | au **build** (`npm run build`) |
+| Back | `/VERSION` + `git rev-parse HEAD` | au **démarrage** d'uvicorn |
+
+Le menu profil affiche `vX.Y.Z · <sha> · <date>`. Si le commit du serveur diffère de
+celui du front, un avertissement orange apparaît : signe qu'une des deux moitiés n'a
+pas été mise à jour — le plus souvent **uvicorn non redémarré** après un `git pull`.
+
+Vérification directe : `curl https://<app>.alwaysdata.net/api/version`
+
 ## 6. Sauvegardes
 
 La base est un simple fichier. Sauvegarde régulière :

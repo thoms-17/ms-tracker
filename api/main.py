@@ -28,9 +28,38 @@ from src import db
 
 from .routers import auth, discover, stats, tracking, upcoming
 
+_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _read_version() -> str:
+    """Numéro lisible, partagé avec le front (source unique : /VERSION)."""
+    try:
+        return (_ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    except OSError:
+        return "inconnu"
+
+
+def _read_git_sha() -> str:
+    """Commit réellement déployé — dit la vérité même si le VERSION n'a pas bougé."""
+    try:
+        import subprocess
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=_ROOT, capture_output=True, text=True, timeout=2, check=True,
+        )
+        return out.stdout.strip()
+    except Exception:
+        return "inconnu"  # dépôt absent (archive) ou git indisponible
+
+
+# Lus une seule fois au démarrage : ils ne changent pas tant que le process vit.
+# C'est justement ce qui permet de repérer un back resté sur l'ancien code.
+APP_VERSION = _read_version()
+GIT_SHA = _read_git_sha()
+
 app = FastAPI(
-    title="TV Time Analytics API",
-    version="0.1.0",
+    title="MS Tracker API",
+    version=APP_VERSION,
     description="API multi-utilisateur du suivi de visionnage (back du front React).",
 )
 
@@ -67,6 +96,16 @@ def _startup():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/version")
+def version():
+    """Version du back en cours d'exécution (public : aucune donnée sensible).
+
+    Le front compare avec la sienne : un écart signale un back resté sur
+    l'ancien code — typiquement un uvicorn non redémarré après déploiement.
+    """
+    return {"version": APP_VERSION, "git_sha": GIT_SHA}
 
 
 # --- Service du front React en prod -------------------------------------------

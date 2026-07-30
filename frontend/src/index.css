@@ -460,6 +460,16 @@ button.btn:disabled { opacity: .5; cursor: default; }
 .usermenu-head strong { color: var(--text); font-size: 14px; }
 .menu-backdrop { position: fixed; inset: 0; z-index: 20; }
 
+/* Version de l'app, en pied du menu profil */
+.version-info {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 8px 12px 4px; margin-top: 2px;
+  border-top: 1px solid var(--glass-brd);
+  font-size: 11px; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.version-warn { color: #ffb454; }
+
 /* Modale (connexion depuis la vitrine) */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 200;
