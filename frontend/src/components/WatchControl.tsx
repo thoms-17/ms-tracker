@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useCloseOnScroll } from "../hooks";
 
 /**
  * Bouton rond de visionnage, façon TV Time — partagé par épisodes, saisons et films.
@@ -119,6 +120,8 @@ function WatchMenu({ anchor, onClose, children }: {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  useCloseOnScroll(onClose);
 
   return createPortal(
     <div className="menu-layer" onClick={onClose}>

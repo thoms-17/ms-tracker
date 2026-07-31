@@ -461,7 +461,10 @@ button.btn:disabled { opacity: .5; cursor: default; }
   /* garde-fou : ne peut jamais être plus large que l'écran */
   max-width: calc(100vw - 28px);
   padding: 6px; display: flex; flex-direction: column; gap: 2px;
-  background: var(--glass-strong); border: 1px solid var(--glass-brd); border-radius: 16px;
+  /* Quasi opaque, contrairement aux autres panneaux : les tuiles de stats
+     placées dessous transparaissaient et gênaient la lecture. */
+  background: rgba(20, 22, 27, 0.985);
+  border: 1px solid var(--glass-brd); border-radius: 16px;
   backdrop-filter: blur(var(--glass-blur)) saturate(160%);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
   box-shadow: var(--glass-shadow);

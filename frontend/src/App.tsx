@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "./api";
+import { useCloseOnScroll } from "./hooks";
 import SearchBar from "./components/SearchBar";
 import Spinner from "./components/Spinner";
 import VersionInfo from "./components/VersionInfo";
@@ -106,6 +107,9 @@ function UserMenu({ username }: { username: string }) {
       qc.clear(); // vide le cache (données de l'utilisateur précédent)
     },
   });
+
+  // Popover ancré à l'avatar : un défilement le décrocherait de son bouton.
+  useCloseOnScroll(() => setOpen(false), open);
 
   return (
     <div className="usermenu">

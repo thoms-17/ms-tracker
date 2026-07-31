@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import Confetti from "../components/Confetti";
 import Spinner from "../components/Spinner";
+import { useCloseOnScroll } from "../hooks";
 import WatchControl from "../components/WatchControl";
 import WatchProviders from "../components/WatchProviders";
 import type { EpisodeItem, SeasonGroup } from "../types";
@@ -160,6 +161,8 @@ function Modal({ onClose, children }: { onClose: () => void; children: ReactNode
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  useCloseOnScroll(onClose);
 
   return createPortal(
     <div className="modal-layer" onClick={onClose}>
