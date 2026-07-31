@@ -20,7 +20,13 @@
 
 * { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  /* Le header collant recouvre le haut du contenu : on réserve sa hauteur pour que
+     tout défilement automatique (scrollIntoView, focus, ancre) ne place jamais un
+     élément dessous — sinon il devient invisible et surtout non cliquable. */
+  scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px);
+}
 
 body {
   margin: 0;
@@ -433,7 +439,9 @@ button.btn:disabled { opacity: .5; cursor: default; }
 .link-btn:hover { color: var(--text); text-decoration: underline; }
 
 /* Menu profil dans le header */
-.usermenu { position: relative; flex-shrink: 0; }
+/* margin-left:auto → toujours collé à droite, même quand la barre de recherche
+   est masquée (mobile) : sans ça, le popover ancré à droite déborde hors écran. */
+.usermenu { position: relative; flex-shrink: 0; margin-left: auto; }
 .usermenu-btn {
   display: flex; align-items: center; gap: 8px; cursor: pointer;
   background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text);
@@ -450,6 +458,8 @@ button.btn:disabled { opacity: .5; cursor: default; }
 .usermenu-name { font-size: 14px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .usermenu-pop {
   position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; min-width: 200px;
+  /* garde-fou : ne peut jamais être plus large que l'écran */
+  max-width: calc(100vw - 28px);
   padding: 6px; display: flex; flex-direction: column; gap: 2px;
   background: var(--glass-strong); border: 1px solid var(--glass-brd); border-radius: 16px;
   backdrop-filter: blur(var(--glass-blur)) saturate(160%);
@@ -544,6 +554,11 @@ button.btn:disabled { opacity: .5; cursor: default; }
 /* Mobile (≤ 640px)                                                   */
 /* ------------------------------------------------------------------ */
 @media (max-width: 640px) {
+  /* La barre de navigation flotte par-dessus le contenu : sans cette réserve, un
+     défilement automatique peut poser un épisode dessous — il reçoit alors le tap
+     à la place du bouton visé. */
+  html { scroll-padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 100px); }
+
   header {
     gap: 12px;
     padding: 12px max(14px, env(safe-area-inset-right)) 12px max(14px, env(safe-area-inset-left));
