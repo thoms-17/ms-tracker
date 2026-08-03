@@ -10,6 +10,9 @@ import WatchControl from "../components/WatchControl";
 import WatchProviders from "../components/WatchProviders";
 import type { EpisodeItem, SeasonGroup } from "../types";
 
+/** Retard de visionnage avant un épisode : nombre d'épisodes et de saisons concernés. */
+type Retard = { total: number; saisons: number };
+
 export default function SeriesDetail() {
   const { uuid = "" } = useParams();
   const qc = useQueryClient();
@@ -44,6 +47,30 @@ export default function SeriesDetail() {
   const url = posterUrl(s.poster_path, true);
   const nextSeason = s.seasons.find((se) => se.season_number !== 0 && se.watched < se.total)?.season_number;
 
+  // Tous les épisodes réguliers de la série, dans l'ordre de diffusion. Le
+  // rattrapage traverse les saisons : il faut donc raisonner sur l'ensemble,
+  // pas sur la seule saison affichée.
+  const reguliers = s.seasons
+    .filter((se) => se.season_number !== 0)
+    .flatMap((se) => se.episodes);
+
+  /** Épisodes réguliers non vus situés avant celui-ci (saisons précédentes incluses). */
+  const avantNonVus = (e: EpisodeItem): Retard => {
+    if (e.season_number === 0) return { total: 0, saisons: 0 }; // un spécial ne rattrape rien
+    const avant = reguliers.filter(
+      (x) =>
+        x.watched_count === 0 &&
+        (x.season_number < e.season_number ||
+          (x.season_number === e.season_number && x.episode_number < e.episode_number)),
+    );
+    return {
+      total: avant.length,
+      saisons: new Set(
+        avant.filter((x) => x.season_number < e.season_number).map((x) => x.season_number),
+      ).size,
+    };
+  };
+
   return (
     <>
       {confetti && <Confetti />}
@@ -63,14 +90,25 @@ export default function SeriesDetail() {
       </div>
 
       {s.seasons.map((se) => (
-        <Season key={se.season_number} uuid={uuid} se={se} open={se.season_number === nextSeason} onChange={refresh} />
+        <Season
+          key={se.season_number}
+          uuid={uuid}
+          se={se}
+          open={se.season_number === nextSeason}
+          avantNonVus={avantNonVus}
+          onChange={refresh}
+        />
       ))}
     </>
   );
 }
 
-function Season({ uuid, se, open, onChange }: {
-  uuid: string; se: SeasonGroup; open: boolean; onChange: () => void;
+function Season({ uuid, se, open, avantNonVus, onChange }: {
+  uuid: string;
+  se: SeasonGroup;
+  open: boolean;
+  avantNonVus: (e: EpisodeItem) => Retard;
+  onChange: () => void;
 }) {
   const s = se.season_number;
   const markWatched = useMutation({ mutationFn: () => api.markSeason(uuid, s, true), onSuccess: onChange });
@@ -95,19 +133,15 @@ function Season({ uuid, se, open, onChange }: {
           />
         </span>
       </summary>
-      {se.episodes.map((e) => {
-        // Épisodes plus anciens de la saison encore non vus (façon TV Time : rattrapage).
-        const prevUnwatched = se.episodes.filter(
-          (x) => x.episode_number < e.episode_number && x.watched_count === 0,
-        ).length;
-        return <Episode key={e.episode_id} e={e} prevUnwatched={prevUnwatched} onChange={onChange} />;
-      })}
+      {se.episodes.map((e) => (
+        <Episode key={e.episode_id} e={e} retard={avantNonVus(e)} onChange={onChange} />
+      ))}
     </details>
   );
 }
 
-function Episode({ e, prevUnwatched, onChange }: {
-  e: EpisodeItem; prevUnwatched: number; onChange: () => void;
+function Episode({ e, retard, onChange }: {
+  e: EpisodeItem; retard: Retard; onChange: () => void;
 }) {
   const add = useMutation({ mutationFn: () => api.watchEpisode(e.episode_id), onSuccess: onChange });
   const catchUp = useMutation({ mutationFn: () => api.catchUpEpisode(e.episode_id), onSuccess: onChange });
@@ -117,9 +151,10 @@ function Episode({ e, prevUnwatched, onChange }: {
   const num = `S${String(e.season_number).padStart(2, "0")}E${String(e.episode_number).padStart(2, "0")}`;
 
   const onComplete = () => {
-    if (prevUnwatched > 0) setAsk(true); // des épisodes avant celui-ci ne sont pas vus
+    if (retard.total > 0) setAsk(true); // des épisodes avant celui-ci ne sont pas vus
     else add.mutate();
   };
+  const pluriel = retard.total > 1;
 
   return (
     <div className={`ep${e.watched_count > 0 ? " seen" : ""}`}>
@@ -137,15 +172,18 @@ function Episode({ e, prevUnwatched, onChange }: {
         <Modal onClose={() => setAsk(false)}>
           <h3 className="modal-title">Rattraper les épisodes précédents ?</h3>
           <p className="muted">
-            {prevUnwatched} épisode{prevUnwatched > 1 ? "s" : ""} avant {num} {prevUnwatched > 1 ? "ne sont pas vus" : "n'est pas vu"}.
-            Veux-tu {prevUnwatched > 1 ? "les" : "l'"} marquer comme vu{prevUnwatched > 1 ? "s" : ""} aussi ?
+            {retard.total} épisode{pluriel ? "s" : ""} avant {num} {pluriel ? "ne sont pas vus" : "n'est pas vu"}
+            {retard.saisons > 0 && (
+              <>, dont {retard.saisons > 1 ? `ceux de ${retard.saisons} saisons précédentes` : "ceux de la saison précédente"}</>
+            )}.
+            {" "}Veux-tu {pluriel ? "les" : "l'"} marquer comme vu{pluriel ? "s" : ""} aussi ?
           </p>
           <div className="modal-actions">
             <button className="btn" onClick={() => { add.mutate(); setAsk(false); }}>
               Seulement {num}
             </button>
             <button className="btn primary" onClick={() => { catchUp.mutate(); setAsk(false); }}>
-              Marquer les {prevUnwatched + 1} épisodes
+              Marquer les {retard.total + 1} épisodes
             </button>
           </div>
         </Modal>

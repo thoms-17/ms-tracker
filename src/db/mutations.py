@@ -23,23 +23,39 @@ def add_episode_watch(user_id: int, episode_id: int, when=None) -> None:
 
 
 def catch_up_episode(user_id: int, episode_id: int) -> int:
-    """Marque l'épisode ET tous les épisodes précédents non vus de sa saison.
+    """Marque l'épisode ET tous les épisodes précédents non vus de la série.
 
-    Reprend le comportement TV Time : cocher l'épisode 10 alors que seuls 1→3 sont vus
-    rattrape 4→10 (un visionnage pour chaque épisode encore à 0). Les épisodes déjà vus
-    ne sont pas retouchés. Renvoie le nombre d'épisodes nouvellement marqués.
+    Reprend le comportement TV Time : cocher S02E07 rattrape l'intégralité de la
+    saison 1 puis les épisodes 1→7 de la saison 2 encore à zéro visionnage. Les
+    épisodes déjà vus ne sont jamais retouchés (pas de doublon).
+
+    Les spéciaux sont exclus : ils ne font pas partie de l'ordre de visionnage
+    régulier, et les rattraper au passage serait inattendu. Si la cible est
+    elle-même un spécial, seul cet épisode est marqué.
+
+    Renvoie le nombre d'épisodes nouvellement marqués.
     """
     conn = get_conn()
     if not owns_episode(conn, episode_id, user_id):
         conn.close(); raise NotOwned()
-    series_uuid, season, epnum = conn.execute(
-        "SELECT series_uuid, season_number, episode_number FROM episodes WHERE id=?",
+    series_uuid, season, epnum, special, is_specials = conn.execute(
+        "SELECT series_uuid, season_number, episode_number, special, is_specials "
+        "FROM episodes WHERE id=?",
         (episode_id,),
     ).fetchone()
-    ids = [r[0] for r in conn.execute(
-        "SELECT id FROM episodes WHERE series_uuid=? AND season_number=? AND episode_number<=?",
-        (series_uuid, season, epnum),
-    ).fetchall()]
+
+    if season == 0 or special or is_specials:
+        ids = [episode_id]  # un spécial ne rattrape rien
+    else:
+        # Ordre de diffusion : toutes les saisons antérieures, puis la saison
+        # courante jusqu'à l'épisode inclus.
+        ids = [r[0] for r in conn.execute(
+            "SELECT id FROM episodes WHERE series_uuid=?"
+            " AND season_number > 0"
+            " AND COALESCE(special, 0) = 0 AND COALESCE(is_specials, 0) = 0"
+            " AND (season_number < ? OR (season_number = ? AND episode_number <= ?))",
+            (series_uuid, season, season, epnum),
+        ).fetchall()]
     now = fmt(pd.Timestamp.now())
     marked = 0
     for ep_id in ids:
