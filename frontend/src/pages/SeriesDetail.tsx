@@ -48,10 +48,10 @@ export default function SeriesDetail() {
     <>
       {confetti && <Confetti />}
       <Link to="/" className="muted">← Suivi</Link>
-      <div style={{ display: "flex", gap: 24, margin: "16px 0" }}>
-        {url ? <img src={url} alt={s.title} style={{ width: 160, borderRadius: 8 }} /> : null}
-        <div>
-          <h2 style={{ margin: "0 0 8px" }}>{s.title}</h2>
+      <div className="detail-head">
+        {url ? <img className="detail-poster" src={url} alt={s.title} /> : null}
+        <div className="detail-meta">
+          <h2>{s.title}</h2>
           <div className="bar" style={{ maxWidth: 320 }}>
             <span style={{ width: `${Math.min(s.completion * 100, 100)}%` }} />
           </div>

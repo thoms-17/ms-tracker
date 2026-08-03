@@ -31,10 +31,10 @@ export default function MoviePreview() {
   return (
     <>
       <span className="muted" onClick={() => nav(-1)} style={{ cursor: "pointer" }}>← Retour</span>
-      <div style={{ display: "flex", gap: 24, margin: "16px 0" }}>
-        {url && <img src={url} alt={m.title ?? ""} style={{ width: 160, borderRadius: 8 }} />}
-        <div>
-          <h2 style={{ margin: "0 0 6px" }}>{m.title} {m.year ? <span className="muted">({m.year})</span> : null}</h2>
+      <div className="detail-head">
+        {url && <img className="detail-poster" src={url} alt={m.title ?? ""} />}
+        <div className="detail-meta">
+          <h2>{m.title} {m.year ? <span className="muted">({m.year})</span> : null}</h2>
           <p className="muted">Aperçu TMDB — film{m.runtime ? ` · ${m.runtime} min` : ""}</p>
           {m.watched_count > 0 ? (
             <>

@@ -314,8 +314,33 @@ button.btn:disabled { opacity: .5; cursor: default; }
   .confetti { display: none; }
 }
 
+/* En-tête des pages de détail : affiche + informations */
+.detail-head {
+  display: flex;
+  /* `stretch` (défaut) étirerait l'affiche sur toute la hauteur du bloc de texte,
+     la déformant d'autant que le résumé est long. */
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 16px 0;
+}
+.detail-poster {
+  width: 160px;
+  flex-shrink: 0;        /* jamais écrasée horizontalement par le texte voisin */
+  aspect-ratio: 2 / 3;   /* format d'affiche standard */
+  object-fit: cover;     /* recadre au lieu de déformer si la source diffère */
+  border-radius: 8px;
+  background: var(--glass);
+}
+.detail-meta { flex: 1; min-width: 220px; }
+.detail-meta h2 { margin: 0 0 8px; }
+.detail-meta p { max-width: 620px; }
+
 .upcoming-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-.upcoming-row img { width: 48px; border-radius: 4px; }
+/* même précaution : ligne en flex → l'affiche ne doit ni s'étirer ni s'écraser */
+.upcoming-row img {
+  width: 48px; aspect-ratio: 2 / 3; object-fit: cover; flex-shrink: 0; border-radius: 4px;
+}
 .muted { color: var(--muted); }
 
 /* Barre de recherche (le .search-panel est aussi rendu dans l'overlay mobile, hors .searchbox) */
@@ -580,6 +605,11 @@ button.btn:disabled { opacity: .5; cursor: default; }
   .stat { padding: 12px 14px; }
   .stat .value { font-size: 17px; }
   .stat.total .value { font-size: 19px; }
+
+  /* En-tête de détail : affiche plus compacte, texte à côté */
+  .detail-head { gap: 14px; margin: 12px 0; }
+  .detail-poster { width: 112px; }
+  .detail-meta { min-width: 160px; }
 
   /* Grille d'affiches : plus de cartes par ligne sur petit écran */
   .grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 12px; }

@@ -9,7 +9,7 @@ import { useCloseOnScroll } from "../hooks";
  * Le chiffre affiché est le nombre de visionnages (complets pour une saison).
  */
 export default function WatchControl({
-  count, kind, onComplete, onRewatch, onRemoveOne, onRemoveAll,
+  count, kind, onComplete, onRewatch, onRemoveOne, onRemoveAll, disabled = false,
 }: {
   count: number;
   kind: "episode" | "season" | "movie";
@@ -17,6 +17,7 @@ export default function WatchControl({
   onRewatch: () => void; // menu : Revu (+1)
   onRemoveOne: () => void; // menu : Enlever un visionnage (−1)
   onRemoveAll: () => void; // menu : Marquer comme non vu (tout)
+  disabled?: boolean; // mutation en cours → évite les doubles clics
 }) {
   const seen = count > 0;
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -39,6 +40,7 @@ export default function WatchControl({
         type="button"
         className={`watch-btn${seen ? " on" : ""}`}
         onClick={onButton}
+        disabled={disabled}
         aria-haspopup={seen ? "menu" : undefined}
         aria-expanded={seen ? open : undefined}
         aria-label={seen ? `${seenLabel} — options` : addLabel}
