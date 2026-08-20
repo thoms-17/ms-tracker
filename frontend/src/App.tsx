@@ -3,6 +3,7 @@ import { Link, Route, Routes, useLocation, useSearchParams } from "react-router-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "./api";
 import { useCloseOnScroll } from "./hooks";
+import { clearPersistedCache } from "./persist";
 import SearchBar from "./components/SearchBar";
 import Spinner from "./components/Spinner";
 import VersionInfo from "./components/VersionInfo";
@@ -31,8 +32,13 @@ export default function App() {
   });
 
   // Session expirée en cours d'usage (401 sur une requête) → repasse au login.
+  // On efface aussi la copie locale : plus de session valide, plus de raison de
+  // garder l'historique sur l'appareil (un autre compte pourrait s'y connecter).
   useEffect(() => {
-    const onUnauth = () => qc.setQueryData(["me"], null);
+    const onUnauth = () => {
+      qc.setQueryData(["me"], null);
+      clearPersistedCache();
+    };
     window.addEventListener("auth:unauthorized", onUnauth);
     return () => window.removeEventListener("auth:unauthorized", onUnauth);
   }, [qc]);
@@ -104,7 +110,8 @@ function UserMenu({ username }: { username: string }) {
     mutationFn: api.logout,
     onSuccess: () => {
       qc.setQueryData(["me"], null); // repasse au login
-      qc.clear(); // vide le cache (données de l'utilisateur précédent)
+      qc.clear(); // vide le cache mémoire (données de l'utilisateur précédent)
+      clearPersistedCache(); // …et sa copie sur l'appareil, sinon elle survivrait
     },
   });
 
