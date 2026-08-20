@@ -1,6 +1,8 @@
 """Lectures : reconstruction des DataFrames d'analyse, lookups et couverture."""
 from __future__ import annotations
 
+import sqlite3
+
 import pandas as pd
 
 from .. import loader
@@ -203,3 +205,34 @@ def image_coverage(user_id: int) -> dict:
     m_img = conn.execute("SELECT COUNT(*) FROM movies WHERE user_id=? AND poster_path IS NOT NULL AND poster_path != ''", (user_id,)).fetchone()[0]
     conn.close()
     return {"s_total": s_tot, "s_img": s_img, "m_total": m_tot, "m_img": m_img}
+
+
+def recent_watches(user_id: int, limit: int = 20) -> list[dict]:
+    """Derniers visionnages enregistrés, du plus récent au plus ancien.
+
+    Le tri se fait sur `watches.id` (ordre d'insertion) et non sur `watched_at` :
+    l'import TV Time a attribué la même date à des centaines d'épisodes, si bien
+    qu'un tri par date ferait remonter ce bloc plutôt que les gestes récents.
+
+    Requête directe, sans passer par le Dataset : on ne lit que quelques lignes.
+    """
+    conn = get_conn()
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        """
+        SELECT w.target_type, w.watched_at,
+               s.series_uuid, s.title AS series_title, s.poster_path AS series_poster,
+               e.season_number, e.episode_number, e.name AS episode_name,
+               m.uuid AS movie_uuid, m.title AS movie_title, m.poster_path AS movie_poster
+        FROM watches w
+        LEFT JOIN episodes e ON e.id = w.episode_id
+        LEFT JOIN series   s ON s.series_uuid = e.series_uuid
+        LEFT JOIN movies   m ON m.uuid = w.movie_uuid
+        WHERE s.user_id = ? OR m.user_id = ?
+        ORDER BY w.id DESC
+        LIMIT ?
+        """,
+        (user_id, user_id, limit),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

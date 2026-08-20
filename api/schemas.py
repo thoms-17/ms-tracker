@@ -42,6 +42,18 @@ class ValidResponse(BaseModel):
     valid: bool
 
 
+class HistoryItem(BaseModel):
+    """Une ligne d'historique : un visionnage enregistré."""
+    kind: str                            # "episode" | "movie"
+    title: str                           # série ou film
+    poster_path: str | None = None
+    uuid: str | None = None              # cible de navigation (série ou film)
+    season: int | None = None            # épisodes uniquement
+    number: int | None = None
+    episode_name: str | None = None
+    watched_at: str | None = None
+
+
 class TrendingItem(BaseModel):
     media_type: str
     tmdb_id: int

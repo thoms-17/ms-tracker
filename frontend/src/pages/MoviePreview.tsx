@@ -16,6 +16,7 @@ export default function MoviePreview() {
     qc.invalidateQueries({ queryKey: ["moviePreview", id] });
     qc.invalidateQueries({ queryKey: ["movies"] });
     qc.invalidateQueries({ queryKey: ["watchTime"] });
+    qc.invalidateQueries({ queryKey: ["history"] });
   };
   const add = useMutation({ mutationFn: () => api.watchMovieFromTmdb(id), onSuccess: invalidate });
   const minus = useMutation({

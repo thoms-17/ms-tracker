@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
+import Historique from "../components/Historique";
 import WatchControl from "../components/WatchControl";
 
-type Mode = "series" | "movies";
+type Mode = "series" | "movies" | "historique";
 type Sort = "recent" | "az" | "rewatch";
 type View = "grid" | "list";
 
@@ -61,7 +62,13 @@ export default function VusTab() {
           <button className={mode === "movies" ? "active" : ""} onClick={() => setMode("movies")}>
             Films {movies.length}
           </button>
+          <button className={mode === "historique" ? "active" : ""} onClick={() => setMode("historique")}>
+            Historique
+          </button>
         </div>
+        {/* Tri, vue et filtre ne s'appliquent pas à l'historique (ordre chronologique figé). */}
+        {mode !== "historique" && (
+        <>
         <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
           <option value="recent">Récemment vus</option>
           <option value="az">A → Z</option>
@@ -72,9 +79,13 @@ export default function VusTab() {
           <button className={view === "list" ? "active" : ""} onClick={() => setView("list")}>Liste</button>
         </div>
         <input className="vus-search" placeholder="Filtrer…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </>
+        )}
       </div>
 
-      {items.length === 0 ? (
+      {mode === "historique" ? (
+        <Historique />
+      ) : items.length === 0 ? (
         <p className="muted">Rien à afficher.</p>
       ) : view === "grid" ? (
         <div className={`grid${mode === "movies" ? " movies" : ""}`}>
@@ -98,6 +109,7 @@ function MovieWatch({ uuid, count }: { uuid: string; count: number }) {
   const inv = () => {
     qc.invalidateQueries({ queryKey: ["movies"] });
     qc.invalidateQueries({ queryKey: ["watchTime"] });
+    qc.invalidateQueries({ queryKey: ["history"] });
   };
   const add = useMutation({ mutationFn: () => api.watchMovie(uuid), onSuccess: inv });
   const removeOne = useMutation({ mutationFn: () => api.removeMovieWatch(uuid), onSuccess: inv });

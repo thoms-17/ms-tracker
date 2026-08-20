@@ -1,4 +1,5 @@
 import type {
+  HistoryItem,
   MovieItem,
   SearchItem,
   SeriesDetail,
@@ -91,6 +92,7 @@ export const api = {
   seriesDetail: (uuid: string) => req<SeriesDetail>(`/series/${uuid}`),
   movies: () => req<MovieItem[]>("/movies"),
   upcoming: () => req<UpcomingItem[]>("/upcoming"),
+  history: (limit = 20) => req<HistoryItem[]>(`/history?limit=${limit}`),
   watchTime: () => req<WatchTime>("/stats/watch-time"),
 
   // synchro TMDB (tâche de fond + polling)

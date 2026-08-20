@@ -78,6 +78,7 @@ export default function SeriesDetail() {
     qc.invalidateQueries({ queryKey: ["series", uuid] });
     qc.invalidateQueries({ queryKey: ["series"] });
     qc.invalidateQueries({ queryKey: ["watchTime"] });
+    qc.invalidateQueries({ queryKey: ["history"] });
   };
 
   if (detail.isLoading) return <Spinner />;

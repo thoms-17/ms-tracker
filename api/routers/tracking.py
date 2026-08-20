@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from src import db
 
 from .. import deps, serializers
-from ..schemas import MovieItem, SeriesDetail, SeriesSummary
+from ..schemas import HistoryItem, MovieItem, SeriesDetail, SeriesSummary
 
 router = APIRouter(tags=["suivi"])
 
@@ -25,6 +25,13 @@ def get_series(uuid: str, user_id: int = Uid):
     if detail is None:
         raise HTTPException(404, "Série introuvable")
     return detail
+
+
+@router.get("/history", response_model=list[HistoryItem])
+def history(limit: int = 20, user_id: int = Uid):
+    """Derniers visionnages enregistrés, du plus récent au plus ancien."""
+    limit = max(1, min(limit, 50))  # garde-fou : pas de dump complet
+    return serializers.history_items(db.recent_watches(user_id, limit))
 
 
 @router.get("/movies", response_model=list[MovieItem])

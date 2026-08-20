@@ -74,6 +74,17 @@ export interface MovieItem {
   last_watched: string | null;
 }
 
+export interface HistoryItem {
+  kind: "episode" | "movie";
+  title: string;
+  poster_path: string | null;
+  uuid: string | null;
+  season: number | null;
+  number: number | null;
+  episode_name: string | null;
+  watched_at: string | null;
+}
+
 export interface UpcomingItem {
   series_title: string;
   poster_path: string | null;

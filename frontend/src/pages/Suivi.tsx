@@ -105,6 +105,7 @@ function SeriesCard({ s, showNext, onComplete }: {
     mutationFn: () => api.markNext(s.uuid),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["series"] });
+      qc.invalidateQueries({ queryKey: ["history"] });
       // Ce visionnage était-il le dernier ? → série terminée : confettis.
       if (s.n_episodes > 0 && s.n_watched + 1 >= s.n_episodes) onComplete?.();
     },
@@ -146,7 +147,7 @@ function SyncControls() {
   useEffect(() => {
     if (wasRunning.current && !running) {
       // La synchro vient de finir → rafraîchit les données dérivées.
-      ["upcoming", "series", "movies", "watchTime"].forEach((k) =>
+      ["upcoming", "series", "movies", "watchTime", "history"].forEach((k) =>
         qc.invalidateQueries({ queryKey: [k] }),
       );
       setJustFinished(status.data?.result ?? null);

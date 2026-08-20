@@ -20,6 +20,7 @@ export default function SeriesPreview() {
     mutationFn: (mark: { season: number; number: number }) => api.trackSeries(id, mark),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["series"] });
+      qc.invalidateQueries({ queryKey: ["history"] });
       nav(`/series/${res.uuid}`);
     },
   });

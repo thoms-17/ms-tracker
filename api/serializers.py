@@ -6,8 +6,8 @@ import pandas as pd
 from src import db
 from src.loader import Dataset
 
-from .schemas import (EpisodeItem, MovieItem, NextEpisode, SeasonGroup,
-                      SeriesDetail, SeriesSummary)
+from .schemas import (EpisodeItem, HistoryItem, MovieItem, NextEpisode,
+                      SeasonGroup, SeriesDetail, SeriesSummary)
 
 
 def _dt(v) -> str | None:
@@ -82,3 +82,24 @@ def movie_items(ds: Dataset) -> list[MovieItem]:
                   watched_count=int(r.watched_count), last_watched=_dt(r.watched_at))
         for r in mv.itertuples()
     ]
+
+
+def history_items(rows: list[dict]) -> list[HistoryItem]:
+    """Transforme les lignes de `recent_watches` en éléments d'historique."""
+    out = []
+    for r in rows:
+        if r["target_type"] == "movie":
+            if not r["movie_title"]:
+                continue  # visionnage orphelin (film supprimé)
+            out.append(HistoryItem(
+                kind="movie", title=r["movie_title"], poster_path=_s(r["movie_poster"]),
+                uuid=_s(r["movie_uuid"]), watched_at=_s(r["watched_at"])))
+        else:
+            if not r["series_title"]:
+                continue  # épisode supprimé entre-temps
+            out.append(HistoryItem(
+                kind="episode", title=r["series_title"], poster_path=_s(r["series_poster"]),
+                uuid=_s(r["series_uuid"]),
+                season=r["season_number"], number=r["episode_number"],
+                episode_name=_s(r["episode_name"]), watched_at=_s(r["watched_at"])))
+    return out

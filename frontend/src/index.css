@@ -300,6 +300,25 @@ button.btn:disabled { opacity: .5; cursor: default; }
 .modal-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 .modal-actions .btn { flex: 1; min-width: 130px; text-align: center; }
 
+/* Historique des derniers visionnages */
+.histo { display: flex; flex-direction: column; }
+.histo-ligne {
+  display: flex; align-items: center; gap: 12px; padding: 9px 4px;
+  border-bottom: 1px solid var(--border); color: inherit;
+}
+a.histo-ligne:hover { background: rgba(255, 255, 255, 0.04); }
+.histo-poster {
+  width: 38px; aspect-ratio: 2 / 3; object-fit: cover; flex-shrink: 0;
+  border-radius: 4px; background: var(--glass); border: 1px solid var(--glass-brd);
+}
+.histo-texte { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.histo-titre {
+  font-size: 14px; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.histo-texte .muted { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.histo-date { font-size: 12px; white-space: nowrap; flex-shrink: 0; }
+
 /* Messages d'échec discrets, en bas de l'écran */
 .toasts {
   position: fixed; left: 50%; transform: translateX(-50%);
