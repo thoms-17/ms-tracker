@@ -6,6 +6,7 @@ import { api, posterUrl } from "../api";
 import Confetti from "../components/Confetti";
 import Spinner from "../components/Spinner";
 import { useCloseOnScroll } from "../hooks";
+import { signalerEchec } from "../toast";
 import WatchControl from "../components/WatchControl";
 import WatchProviders from "../components/WatchProviders";
 import type { EpisodeItem, SeasonGroup, SeriesDetail as Detail } from "../types";
@@ -150,10 +151,13 @@ function Season({ uuid, se, open, avantNonVus, onChange }: {
   onChange: () => void;
 }) {
   const s = se.season_number;
-  const markWatched = useMutation({ mutationFn: () => api.markSeason(uuid, s, true), onSuccess: onChange });
-  const markUnwatched = useMutation({ mutationFn: () => api.markSeason(uuid, s, false), onSuccess: onChange });
-  const rewatch = useMutation({ mutationFn: () => api.rewatchSeason(uuid, s), onSuccess: onChange });
-  const removeOne = useMutation({ mutationFn: () => api.removeSeasonWatch(uuid, s), onSuccess: onChange });
+  // Ces actions ne sont pas optimistes (elles touchent toute la saison) : en cas
+  // d'échec rien ne bouge à l'écran, d'où le message pour ne pas rester muet.
+  const echec = { onError: (err: unknown) => signalerEchec(err, "Échec — saison non mise à jour") };
+  const markWatched = useMutation({ mutationFn: () => api.markSeason(uuid, s, true), onSuccess: onChange, ...echec });
+  const markUnwatched = useMutation({ mutationFn: () => api.markSeason(uuid, s, false), onSuccess: onChange, ...echec });
+  const rewatch = useMutation({ mutationFn: () => api.rewatchSeason(uuid, s), onSuccess: onChange, ...echec });
+  const removeOne = useMutation({ mutationFn: () => api.removeSeasonWatch(uuid, s), onSuccess: onChange, ...echec });
   const done = se.watched === se.total;
   // Nombre de visionnages complets de la saison = min des compteurs de ses épisodes.
   const passes = se.episodes.length ? Math.min(...se.episodes.map((e) => e.watched_count)) : 0;
@@ -198,8 +202,10 @@ function Episode({ uuid, e, retard, onChange }: {
       if (precedent) qc.setQueryData(cle, majEpisodes(precedent, new Set(ids), calc));
       return { precedent };
     },
-    onError: (_err: unknown, _v: void, ctx?: { precedent?: Detail }) => {
+    onError: (err: unknown, _v: void, ctx?: { precedent?: Detail }) => {
       if (ctx?.precedent) qc.setQueryData(cle, ctx.precedent);
+      // Le compteur redescend : sans message, l'annulation passerait inaperçue.
+      signalerEchec(err, "Échec — visionnage non enregistré");
     },
     onSettled: onChange, // réconcilie avec le serveur, succès comme échec
   });

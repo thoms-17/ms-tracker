@@ -6,6 +6,7 @@ import { useCloseOnScroll } from "./hooks";
 import { clearPersistedCache } from "./persist";
 import SearchBar from "./components/SearchBar";
 import Spinner from "./components/Spinner";
+import Toast from "./components/Toast";
 import VersionInfo from "./components/VersionInfo";
 import Landing from "./pages/Landing";
 import Register from "./pages/Register";
@@ -77,6 +78,7 @@ export default function App() {
         </Routes>
       </main>
       <BottomNav onSearch={() => setSearchOpen(true)} />
+      <Toast />
     </>
   );
 }
