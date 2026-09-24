@@ -90,15 +90,27 @@ def set_episode_unwatched(user_id: int, episode_id: int) -> None:
     conn.commit(); conn.close()
 
 
+def _season_episode_ids(conn, series_uuid: str, season_number: int) -> list[int]:
+    """Épisodes visés par une action « saison entière ».
+
+    TV Time range parfois des spéciaux (``special=1``) dans une saison régulière
+    (ex. les courts « chronologie » de For All Mankind en saison 4). Ils ne font
+    pas partie de la saison au sens du compteur : on ne les marque qu'un par un.
+    La saison 0 (spéciaux) reste traitée en entier.
+    """
+    return [r[0] for r in conn.execute(
+        "SELECT id FROM episodes WHERE series_uuid=? AND season_number=?"
+        " AND (season_number = 0 OR COALESCE(special, 0) = 0)",
+        (series_uuid, season_number),
+    ).fetchall()]
+
+
 def mark_season(user_id: int, series_uuid: str, season_number: int, watched: bool = True) -> None:
     """Marque (fill : un visionnage si absent) ou démarque tous les épisodes d'une saison."""
     conn = get_conn()
     if not owns_series(conn, series_uuid, user_id):
         conn.close(); raise NotOwned()
-    ids = [r[0] for r in conn.execute(
-        "SELECT id FROM episodes WHERE series_uuid=? AND season_number=?",
-        (series_uuid, season_number),
-    ).fetchall()]
+    ids = _season_episode_ids(conn, series_uuid, season_number)
     now = fmt(pd.Timestamp.now())
     for ep_id in ids:
         has = conn.execute("SELECT COUNT(*) FROM watches WHERE episode_id=?", (ep_id,)).fetchone()[0]
@@ -114,10 +126,7 @@ def rewatch_season(user_id: int, series_uuid: str, season_number: int) -> None:
     conn = get_conn()
     if not owns_series(conn, series_uuid, user_id):
         conn.close(); raise NotOwned()
-    ids = [r[0] for r in conn.execute(
-        "SELECT id FROM episodes WHERE series_uuid=? AND season_number=?",
-        (series_uuid, season_number),
-    ).fetchall()]
+    ids = _season_episode_ids(conn, series_uuid, season_number)
     now = fmt(pd.Timestamp.now())
     conn.executemany(
         "INSERT INTO watches(target_type,episode_id,watched_at) VALUES ('episode',?,?)",
@@ -131,10 +140,7 @@ def remove_season_watch(user_id: int, series_uuid: str, season_number: int) -> N
     conn = get_conn()
     if not owns_series(conn, series_uuid, user_id):
         conn.close(); raise NotOwned()
-    ids = [r[0] for r in conn.execute(
-        "SELECT id FROM episodes WHERE series_uuid=? AND season_number=?",
-        (series_uuid, season_number),
-    ).fetchall()]
+    ids = _season_episode_ids(conn, series_uuid, season_number)
     for ep_id in ids:
         row = conn.execute(
             "SELECT id FROM watches WHERE episode_id=? ORDER BY watched_at DESC, id DESC LIMIT 1",

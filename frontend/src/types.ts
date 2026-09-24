@@ -28,6 +28,8 @@ export interface EpisodeItem {
   episode_number: number;
   name: string | null;
   watched_count: number;
+  /** Spécial rangé dans une saison régulière : affiché, mais hors compteurs. */
+  special: boolean;
 }
 
 export interface SeasonGroup {

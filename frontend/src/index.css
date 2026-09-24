@@ -237,6 +237,11 @@ button.btn:disabled { opacity: .5; cursor: default; }
 .ep .num { color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .ep-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ep.seen .ep-name { color: var(--muted); }
+.ep-tag {
+  display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: 6px;
+  font-size: 11px; font-weight: 600; vertical-align: 1px;
+  color: var(--muted); border: 1px solid var(--glass-brd);
+}
 
 /* Bouton rond de visionnage (remplace le compteur) */
 .watch-btn {

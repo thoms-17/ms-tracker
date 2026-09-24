@@ -95,6 +95,7 @@ class EpisodeItem(BaseModel):
     episode_number: int
     name: str | None = None
     watched_count: int
+    special: bool = False  # spécial rangé dans une saison régulière : hors compteur
 
 
 class SeasonGroup(BaseModel):

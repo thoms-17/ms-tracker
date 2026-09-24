@@ -19,9 +19,8 @@ type Retard = { total: number; saisons: number; ids: number[] };
  * et met à jour les agrégats affichés (compteur de saison, progression série).
  *
  * Les agrégats sont ajustés **par delta** plutôt que recalculés : le serveur
- * exclut les épisodes « spéciaux » du décompte, un marqueur absent du modèle
- * front. Un recalcul complet produirait donc un écart visible avant que la
- * réponse du serveur ne le corrige.
+ * exclut les épisodes « spéciaux » du décompte ; les agréger par delta garde
+ * le front aligné sur ses règles sans les dupliquer.
  */
 function majEpisodes(d: Detail, ids: Set<number>, calc: (n: number) => number): Detail {
   let deltaSerie = 0;
@@ -32,10 +31,11 @@ function majEpisodes(d: Detail, ids: Set<number>, calc: (n: number) => number): 
       if (!ids.has(e.episode_id)) return e;
       const avant = e.watched_count;
       const apres = Math.max(0, calc(avant));
-      if (avant === 0 && apres > 0) {
+      const compte = !e.special; // un spécial ne compte ni dans la saison ni dans la série
+      if (compte && avant === 0 && apres > 0) {
         deltaSaison += 1;
         if (se.season_number !== 0) deltaSerie += 1;
-      } else if (avant > 0 && apres === 0) {
+      } else if (compte && avant > 0 && apres === 0) {
         deltaSaison -= 1;
         if (se.season_number !== 0) deltaSerie -= 1;
       }
@@ -92,11 +92,12 @@ export default function SeriesDetail() {
   // pas sur la seule saison affichée.
   const reguliers = s.seasons
     .filter((se) => se.season_number !== 0)
-    .flatMap((se) => se.episodes);
+    .flatMap((se) => se.episodes)
+    .filter((e) => !e.special);
 
   /** Épisodes réguliers non vus situés avant celui-ci (saisons précédentes incluses). */
   const avantNonVus = (e: EpisodeItem): Retard => {
-    if (e.season_number === 0) return { total: 0, saisons: 0, ids: [] }; // un spécial ne rattrape rien
+    if (e.season_number === 0 || e.special) return { total: 0, saisons: 0, ids: [] }; // un spécial ne rattrape rien
     const avant = reguliers.filter(
       (x) =>
         x.watched_count === 0 &&
@@ -160,8 +161,10 @@ function Season({ uuid, se, open, avantNonVus, onChange }: {
   const rewatch = useMutation({ mutationFn: () => api.rewatchSeason(uuid, s), onSuccess: onChange, ...echec });
   const removeOne = useMutation({ mutationFn: () => api.removeSeasonWatch(uuid, s), onSuccess: onChange, ...echec });
   const done = se.watched === se.total;
-  // Nombre de visionnages complets de la saison = min des compteurs de ses épisodes.
-  const passes = se.episodes.length ? Math.min(...se.episodes.map((e) => e.watched_count)) : 0;
+  // Nombre de visionnages complets de la saison = min des compteurs de ses épisodes
+  // (hors spéciaux, que les actions de saison ne touchent pas).
+  const comptes = se.episodes.filter((e) => !e.special).map((e) => e.watched_count);
+  const passes = comptes.length ? Math.min(...comptes) : 0;
   return (
     <details className="season" open={open}>
       <summary>
@@ -241,7 +244,10 @@ function Episode({ uuid, e, retard, onChange }: {
   return (
     <div className={`ep${e.watched_count > 0 ? " seen" : ""}`}>
       <span className="num">{num}</span>
-      <span className="ep-name">{e.name}</span>
+      <span className="ep-name">
+        {e.special && <span className="ep-tag">Spécial</span>}
+        {e.name}
+      </span>
       <WatchControl
         count={e.watched_count}
         kind="episode"

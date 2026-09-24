@@ -52,18 +52,23 @@ def series_detail(ds: Dataset, uuid: str, user_id: int) -> SeriesDetail | None:
     s = srow.iloc[0]
     eps = db.get_series_episodes(user_id, uuid)
     seasons = []
+    # TV Time range parfois des spéciaux dans une saison régulière : ils restent
+    # affichés (après les épisodes réguliers) mais ne comptent pas dans le total
+    # de la saison — sinon For All Mankind S4 affiche 19 épisodes au lieu de 10.
+    eps["special"] = eps["special"].fillna(0).astype(bool) & (eps["season_number"] != 0)
     for sn, g in eps.groupby("season_number"):
-        g = g.sort_values("episode_number")
+        g = g.sort_values(["special", "episode_number"])
         label = "Spéciaux" if sn == 0 else f"Saison {int(sn)}"
         episodes = [
             EpisodeItem(episode_id=int(e.episode_id), season_number=int(e.season_number),
                         episode_number=int(e.episode_number), name=_s(e.episode_name),
-                        watched_count=int(e.watched_count))
+                        watched_count=int(e.watched_count), special=bool(e.special))
             for e in g.itertuples()
         ]
+        reg = g[~g["special"]]
         seasons.append(SeasonGroup(
             season_number=int(sn), label=label,
-            watched=int((g["watched_count"] > 0).sum()), total=len(g), episodes=episodes))
+            watched=int((reg["watched_count"] > 0).sum()), total=len(reg), episodes=episodes))
     tmdb_id = s["tmdb_id"] if "tmdb_id" in s and pd.notna(s["tmdb_id"]) else None
     return SeriesDetail(
         uuid=uuid, title=s["series_title"], poster_path=_s(s["poster_path"]), status=_s(s["status"]),
