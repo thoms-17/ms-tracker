@@ -184,6 +184,10 @@ class TmdbMoviePreview(BaseModel):
     uuid: str | None = None  # présent si le film est déjà dans la bibliothèque
 
 
+class UnwatchResult(BaseModel):
+    untracked: bool  # plus aucun visionnage : la série a quitté le suivi
+
+
 class TrackRequest(BaseModel):
     mark_season: int | None = None
     mark_number: int | None = None

@@ -67,8 +67,31 @@ def catch_up_episode(user_id: int, episode_id: int) -> int:
     return marked
 
 
-def remove_last_episode_watch(user_id: int, episode_id: int) -> None:
-    """Retire le visionnage le plus récent (décrémente le compteur)."""
+def _untrack_if_unwatched(conn, series_uuid: str) -> bool:
+    """Retire la série du suivi s'il ne lui reste plus aucun visionnage.
+
+    Une série n'entre dans le suivi qu'en cochant un épisode : tout décocher doit
+    donc l'en faire sortir (elle redevient un simple aperçu TMDB). Les épisodes et
+    leurs visionnages suivent par ON DELETE CASCADE. Renvoie True si retirée.
+    """
+    left = conn.execute(
+        "SELECT 1 FROM watches w JOIN episodes e ON e.id = w.episode_id WHERE e.series_uuid=? LIMIT 1",
+        (series_uuid,),
+    ).fetchone()
+    if left:
+        return False
+    conn.execute("DELETE FROM series WHERE series_uuid=?", (series_uuid,))
+    return True
+
+
+def _series_of_episode(conn, episode_id: int) -> str:
+    return conn.execute("SELECT series_uuid FROM episodes WHERE id=?", (episode_id,)).fetchone()[0]
+
+
+def remove_last_episode_watch(user_id: int, episode_id: int) -> bool:
+    """Retire le visionnage le plus récent (décrémente le compteur).
+
+    Renvoie True si la série, faute de visionnage restant, a quitté le suivi."""
     conn = get_conn()
     if not owns_episode(conn, episode_id, user_id):
         conn.close(); raise NotOwned()
@@ -76,18 +99,24 @@ def remove_last_episode_watch(user_id: int, episode_id: int) -> None:
         "SELECT id FROM watches WHERE episode_id=? ORDER BY watched_at DESC, id DESC LIMIT 1",
         (episode_id,),
     ).fetchone()
+    untracked = False
     if row:
         conn.execute("DELETE FROM watches WHERE id=?", (row[0],))
+        untracked = _untrack_if_unwatched(conn, _series_of_episode(conn, episode_id))
         conn.commit()
     conn.close()
+    return untracked
 
 
-def set_episode_unwatched(user_id: int, episode_id: int) -> None:
+def set_episode_unwatched(user_id: int, episode_id: int) -> bool:
+    """Efface tous les visionnages de l'épisode ; True si la série a quitté le suivi."""
     conn = get_conn()
     if not owns_episode(conn, episode_id, user_id):
         conn.close(); raise NotOwned()
     conn.execute("DELETE FROM watches WHERE episode_id=?", (episode_id,))
+    untracked = _untrack_if_unwatched(conn, _series_of_episode(conn, episode_id))
     conn.commit(); conn.close()
+    return untracked
 
 
 def _season_episode_ids(conn, series_uuid: str, season_number: int) -> list[int]:
@@ -105,8 +134,10 @@ def _season_episode_ids(conn, series_uuid: str, season_number: int) -> list[int]
     ).fetchall()]
 
 
-def mark_season(user_id: int, series_uuid: str, season_number: int, watched: bool = True) -> None:
-    """Marque (fill : un visionnage si absent) ou démarque tous les épisodes d'une saison."""
+def mark_season(user_id: int, series_uuid: str, season_number: int, watched: bool = True) -> bool:
+    """Marque (fill : un visionnage si absent) ou démarque tous les épisodes d'une saison.
+
+    Renvoie True si, après démarquage, la série a quitté le suivi."""
     conn = get_conn()
     if not owns_series(conn, series_uuid, user_id):
         conn.close(); raise NotOwned()
@@ -118,7 +149,9 @@ def mark_season(user_id: int, series_uuid: str, season_number: int, watched: boo
             conn.execute("INSERT INTO watches(target_type,episode_id,watched_at) VALUES ('episode',?,?)", (ep_id, now))
         elif not watched:
             conn.execute("DELETE FROM watches WHERE episode_id=?", (ep_id,))
+    untracked = not watched and _untrack_if_unwatched(conn, series_uuid)
     conn.commit(); conn.close()
+    return untracked
 
 
 def rewatch_season(user_id: int, series_uuid: str, season_number: int) -> None:
@@ -135,8 +168,10 @@ def rewatch_season(user_id: int, series_uuid: str, season_number: int) -> None:
     conn.commit(); conn.close()
 
 
-def remove_season_watch(user_id: int, series_uuid: str, season_number: int) -> None:
-    """Retire UN visionnage complet : le dernier watch de chaque épisode de la saison."""
+def remove_season_watch(user_id: int, series_uuid: str, season_number: int) -> bool:
+    """Retire UN visionnage complet : le dernier watch de chaque épisode de la saison.
+
+    Renvoie True si la série, faute de visionnage restant, a quitté le suivi."""
     conn = get_conn()
     if not owns_series(conn, series_uuid, user_id):
         conn.close(); raise NotOwned()
@@ -148,7 +183,9 @@ def remove_season_watch(user_id: int, series_uuid: str, season_number: int) -> N
         ).fetchone()
         if row:
             conn.execute("DELETE FROM watches WHERE id=?", (row[0],))
+    untracked = _untrack_if_unwatched(conn, series_uuid)
     conn.commit(); conn.close()
+    return untracked
 
 
 def set_meta(user_id: int, key: str, value: str) -> None:
@@ -180,10 +217,13 @@ def remove_last_movie_watch(user_id: int, movie_uuid: str) -> None:
         "SELECT id FROM watches WHERE movie_uuid=? ORDER BY watched_at DESC, id DESC LIMIT 1",
         (movie_uuid,),
     ).fetchone()
+    untracked = False
     if row:
         conn.execute("DELETE FROM watches WHERE id=?", (row[0],))
+        untracked = _untrack_if_unwatched(conn, _series_of_episode(conn, episode_id))
         conn.commit()
     conn.close()
+    return untracked
 
 
 def set_movie_unwatched(user_id: int, movie_uuid: str) -> None:

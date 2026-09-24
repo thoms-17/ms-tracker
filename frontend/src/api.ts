@@ -24,6 +24,8 @@ export class ApiError extends Error {
   }
 }
 
+export type UnwatchResult = { untracked: boolean };
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   // credentials:"include" → le cookie de session accompagne chaque requête.
   const r = await fetch(BASE + path, { credentials: "include", ...init });
@@ -104,15 +106,16 @@ export const api = {
   // marque l'épisode + tous les précédents non vus de la saison (façon TV Time)
   catchUpEpisode: (id: number) => req(`/episodes/${id}/catch-up`, { method: "POST" }),
   rewatchEpisode: (id: number) => req(`/episodes/${id}/watch`, { method: "POST" }),
-  removeEpisodeWatch: (id: number) => req(`/episodes/${id}/watch`, { method: "DELETE" }),
-  unwatchEpisode: (id: number) => req(`/episodes/${id}/watches`, { method: "DELETE" }),
+  // Les retraits renvoient `untracked` : plus aucun visionnage → la série a quitté le suivi.
+  removeEpisodeWatch: (id: number) => req<UnwatchResult>(`/episodes/${id}/watch`, { method: "DELETE" }),
+  unwatchEpisode: (id: number) => req<UnwatchResult>(`/episodes/${id}/watches`, { method: "DELETE" }),
   markNext: (uuid: string) => req(`/series/${uuid}/next`, { method: "POST" }),
   markSeason: (uuid: string, s: number, watched: boolean) =>
-    req(`/series/${uuid}/seasons/${s}/mark?watched=${watched}`, { method: "POST" }),
+    req<UnwatchResult>(`/series/${uuid}/seasons/${s}/mark?watched=${watched}`, { method: "POST" }),
   rewatchSeason: (uuid: string, s: number) =>
     req(`/series/${uuid}/seasons/${s}/rewatch`, { method: "POST" }),
   removeSeasonWatch: (uuid: string, s: number) =>
-    req(`/series/${uuid}/seasons/${s}/watch`, { method: "DELETE" }),
+    req<UnwatchResult>(`/series/${uuid}/seasons/${s}/watch`, { method: "DELETE" }),
 
   // films
   watchMovie: (uuid: string) => req(`/movies/${uuid}/watch`, { method: "POST" }),

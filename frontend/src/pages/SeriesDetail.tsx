@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, posterUrl } from "../api";
+import { api, posterUrl, type UnwatchResult } from "../api";
 import Confetti from "../components/Confetti";
 import Modal from "../components/Modal";
 import Spinner from "../components/Spinner";
@@ -54,6 +54,7 @@ function majEpisodes(d: Detail, ids: Set<number>, calc: (n: number) => number): 
 export default function SeriesDetail() {
   const { uuid = "" } = useParams();
   const qc = useQueryClient();
+  const nav = useNavigate();
   const detail = useQuery({ queryKey: ["series", uuid], queryFn: () => api.seriesDetail(uuid) });
 
   // Confettis quand la série vient d'être terminée (transition non-terminée → terminée).
@@ -73,11 +74,23 @@ export default function SeriesDetail() {
     }
   }, [isComplete, d]);
 
-  const refresh = () => {
-    qc.invalidateQueries({ queryKey: ["series", uuid] });
-    qc.invalidateQueries({ queryKey: ["series"] });
+  /** `res` : réponse de la mutation ; seuls les retraits renvoient un UnwatchResult. */
+  const refresh = (res?: unknown) => {
     qc.invalidateQueries({ queryKey: ["watchTime"] });
     qc.invalidateQueries({ queryKey: ["history"] });
+    qc.invalidateQueries({ queryKey: ["upcoming"] });
+    if (!(res as UnwatchResult | null | undefined)?.untracked) {
+      qc.invalidateQueries({ queryKey: ["series"] }); // liste + ce détail
+      return;
+    }
+    // Plus aucun épisode vu : le serveur a retiré la série du suivi. On retourne sur
+    // son aperçu TMDB (d'où l'on peut la recocher), sans relire ce détail disparu.
+    const tmdbId = detail.data?.tmdb_id;
+    qc.invalidateQueries({ queryKey: ["series"], exact: true });
+    qc.invalidateQueries({ queryKey: ["search"] });
+    if (tmdbId) qc.removeQueries({ queryKey: ["tvPreview", tmdbId] }); // sinon redirige ici
+    nav(tmdbId ? `/tmdb/tv/${tmdbId}` : "/", { replace: true });
+    setTimeout(() => qc.removeQueries({ queryKey: ["series", uuid], exact: true }));
   };
 
   if (detail.isLoading) return <Spinner />;
@@ -149,7 +162,7 @@ function Season({ uuid, se, open, avantNonVus, onChange }: {
   se: SeasonGroup;
   open: boolean;
   avantNonVus: (e: EpisodeItem) => Retard;
-  onChange: () => void;
+  onChange: (res?: unknown) => void;
 }) {
   const s = se.season_number;
   // Ces actions ne sont pas optimistes (elles touchent toute la saison) : en cas
@@ -187,7 +200,7 @@ function Season({ uuid, se, open, avantNonVus, onChange }: {
 }
 
 function Episode({ uuid, e, retard, onChange }: {
-  uuid: string; e: EpisodeItem; retard: Retard; onChange: () => void;
+  uuid: string; e: EpisodeItem; retard: Retard; onChange: (res?: unknown) => void;
 }) {
   const qc = useQueryClient();
   const cle = ["series", uuid];
@@ -210,7 +223,8 @@ function Episode({ uuid, e, retard, onChange }: {
       // Le compteur redescend : sans message, l'annulation passerait inaperçue.
       signalerEchec(err, "Échec — visionnage non enregistré");
     },
-    onSettled: onChange, // réconcilie avec le serveur, succès comme échec
+    // réconcilie avec le serveur, succès comme échec (res dit si la série a quitté le suivi)
+    onSettled: (res: unknown) => onChange(res),
   });
 
   const id = e.episode_id;

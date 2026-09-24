@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from src import db
 
 from .. import deps, serializers
-from ..schemas import HistoryItem, MovieItem, SeriesDetail, SeriesSummary
+from ..schemas import HistoryItem, MovieItem, SeriesDetail, SeriesSummary, UnwatchResult
 
 router = APIRouter(tags=["suivi"])
 
@@ -51,14 +51,16 @@ def catch_up_episode(episode_id: int, user_id: int = Uid):
     db.catch_up_episode(user_id, episode_id); deps.invalidate(user_id)
 
 
-@router.delete("/episodes/{episode_id}/watch", status_code=204)
+@router.delete("/episodes/{episode_id}/watch", response_model=UnwatchResult)
 def unwatch_last_episode(episode_id: int, user_id: int = Uid):
-    db.remove_last_episode_watch(user_id, episode_id); deps.invalidate(user_id)
+    untracked = db.remove_last_episode_watch(user_id, episode_id); deps.invalidate(user_id)
+    return UnwatchResult(untracked=untracked)
 
 
-@router.delete("/episodes/{episode_id}/watches", status_code=204)
+@router.delete("/episodes/{episode_id}/watches", response_model=UnwatchResult)
 def unwatch_episode(episode_id: int, user_id: int = Uid):
-    db.set_episode_unwatched(user_id, episode_id); deps.invalidate(user_id)
+    untracked = db.set_episode_unwatched(user_id, episode_id); deps.invalidate(user_id)
+    return UnwatchResult(untracked=untracked)
 
 
 @router.post("/series/{uuid}/next", status_code=204)
@@ -72,9 +74,10 @@ def watch_next(uuid: str, user_id: int = Uid):
     db.add_episode_watch(user_id, int(nxt["episode_id"])); deps.invalidate(user_id)
 
 
-@router.post("/series/{uuid}/seasons/{season}/mark", status_code=204)
+@router.post("/series/{uuid}/seasons/{season}/mark", response_model=UnwatchResult)
 def mark_season(uuid: str, season: int, watched: bool = True, user_id: int = Uid):
-    db.mark_season(user_id, uuid, season, watched); deps.invalidate(user_id)
+    untracked = db.mark_season(user_id, uuid, season, watched); deps.invalidate(user_id)
+    return UnwatchResult(untracked=untracked)
 
 
 @router.post("/series/{uuid}/seasons/{season}/rewatch", status_code=204)
@@ -82,10 +85,11 @@ def rewatch_season(uuid: str, season: int, user_id: int = Uid):
     db.rewatch_season(user_id, uuid, season); deps.invalidate(user_id)
 
 
-@router.delete("/series/{uuid}/seasons/{season}/watch", status_code=204)
+@router.delete("/series/{uuid}/seasons/{season}/watch", response_model=UnwatchResult)
 def remove_season_watch(uuid: str, season: int, user_id: int = Uid):
     """Retire un visionnage complet de la saison (le dernier de chaque épisode)."""
-    db.remove_season_watch(user_id, uuid, season); deps.invalidate(user_id)
+    untracked = db.remove_season_watch(user_id, uuid, season); deps.invalidate(user_id)
+    return UnwatchResult(untracked=untracked)
 
 
 @router.post("/movies/{uuid}/watch", status_code=204)
