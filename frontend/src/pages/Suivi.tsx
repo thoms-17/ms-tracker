@@ -35,8 +35,14 @@ export default function Suivi() {
   const all = series.data ?? [];
   // Compte sans aucune donnée → on oriente vers la recherche pour démarrer son suivi.
   if (all.length === 0 && (movies.data?.length ?? 0) === 0) return <EmptySuivi />;
-  const inProgress = all.filter((s) => s.n_watched > 0 && s.completion < 1)
-    .sort((a, b) => (b.last_watched ?? "").localeCompare(a.last_watched ?? ""));
+  // Une série à jour dont l'épisode suivant n'est pas sorti attend dans « Prochainement ».
+  // Dès qu'il sort, elle revient ici, en tête (la plus récente sortie d'abord).
+  const inProgress = all.filter((s) => s.n_watched > 0 && s.completion < 1 && !s.waiting)
+    .sort((a, b) =>
+      Number(b.new_episode) - Number(a.new_episode) ||
+      (a.new_episode && b.new_episode
+        ? (b.next_episode?.air_date ?? "").localeCompare(a.next_episode?.air_date ?? "")
+        : (b.last_watched ?? "").localeCompare(a.last_watched ?? "")));
   const completed = all.filter((s) => s.completion >= 1);
 
   return (
@@ -112,8 +118,9 @@ function SeriesCard({ s, showNext, onComplete }: {
   });
   return (
     <div className="card">
-      <Link to={`/series/${s.uuid}`}>
+      <Link to={`/series/${s.uuid}`} className="poster-wrap">
         {url ? <img className="poster" src={url} alt={s.title} /> : <div className="poster" />}
+        {showNext && s.new_episode && <span className="new-badge">Nouvel épisode</span>}
       </Link>
       <div className="bar"><span style={{ width: `${Math.min(s.completion * 100, 100)}%` }} /></div>
       <span className="sub">{s.n_watched}/{s.n_episodes}</span>

@@ -73,10 +73,32 @@ def fetch_trending(media: str, key: str | None, window: str = "week") -> list[di
     return out[:18]
 
 
-def fetch_tv_structure(tmdb_id: int, key: str) -> list[dict]:
-    """Saisons + épisodes (avec durée) d'une série TMDB.
+def fetch_season_episodes(tmdb_id: int, season_number: int, key: str,
+                          fallback_runtime: int | None = None) -> list[dict] | None:
+    """Épisodes d'une saison TMDB : [{'episode_number','name','runtime','air_date'}, ...].
 
-    Renvoie [{'season_number': n, 'episodes': [{'episode_number','name','runtime'}, ...]}, ...]
+    ``air_date`` vaut '' quand TMDB annonce l'épisode sans date de sortie.
+    Renvoie None si la saison n'a pas pu être lue.
+    """
+    try:
+        r = requests.get(f"{BASE}/tv/{tmdb_id}/season/{season_number}",
+                         params={"api_key": key, "language": "fr-FR"}, timeout=10)
+        if r.status_code != 200:
+            return None
+        return [
+            {"episode_number": e.get("episode_number"), "name": e.get("name"),
+             "runtime": e.get("runtime") or fallback_runtime, "air_date": e.get("air_date") or ""}
+            for e in r.json().get("episodes", [])
+            if e.get("episode_number") is not None
+        ]
+    except requests.RequestException:
+        return None
+
+
+def fetch_tv_structure(tmdb_id: int, key: str) -> list[dict]:
+    """Saisons + épisodes (avec durée et date de sortie) d'une série TMDB.
+
+    Renvoie [{'season_number': n, 'episodes': [{'episode_number','name','runtime','air_date'}, ...]}, ...]
     (les saisons spéciales, numéro 0, sont incluses).
     """
     det = details(key, tmdb_id, "tv")
@@ -88,19 +110,7 @@ def fetch_tv_structure(tmdb_id: int, key: str) -> list[dict]:
         sn = s.get("season_number")
         if sn is None:
             continue
-        try:
-            r = requests.get(f"{BASE}/tv/{tmdb_id}/season/{sn}",
-                             params={"api_key": key, "language": "fr-FR"}, timeout=10)
-            if r.status_code != 200:
-                continue
-            eps = [
-                {"episode_number": e.get("episode_number"), "name": e.get("name"),
-                 "runtime": e.get("runtime") or fallback}
-                for e in r.json().get("episodes", [])
-                if e.get("episode_number") is not None
-            ]
-        except requests.RequestException:
-            continue
+        eps = fetch_season_episodes(tmdb_id, sn, key, fallback)
         if eps:
             seasons.append({"season_number": sn, "episodes": eps})
         time.sleep(0.03)
@@ -182,6 +192,7 @@ def fetch_series_updates(tmdb_id: int, key: str) -> dict:
         "status": det.get("status"),
         "next_episode_to_air": det.get("next_episode_to_air"),
         "last_episode_to_air": det.get("last_episode_to_air"),
+        "seasons": [s["season_number"] for s in det.get("seasons", []) if s.get("season_number") is not None],
     }
 
 

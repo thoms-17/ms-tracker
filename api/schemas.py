@@ -73,6 +73,7 @@ class NextEpisode(BaseModel):
     number: int
     name: str | None = None
     episode_id: int
+    air_date: str | None = None  # 'AAAA-MM-JJ' si connue
 
 
 class SeriesSummary(BaseModel):
@@ -87,6 +88,10 @@ class SeriesSummary(BaseModel):
     times_watched: int  # nb de visionnages complets (min des épisodes réguliers)
     last_watched: str | None = None
     next_episode: NextEpisode | None = None
+    # À jour, épisode suivant pas encore sorti (ou annoncé sans date) : hors « En cours »
+    waiting: bool = False
+    # Épisode suivant sorti depuis peu : remonte en tête d'« En cours » avec un badge
+    new_episode: bool = False
 
 
 class EpisodeItem(BaseModel):

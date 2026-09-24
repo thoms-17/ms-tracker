@@ -1,6 +1,8 @@
 """Conversion des DataFrames du cœur métier vers les schémas Pydantic de l'API."""
 from __future__ import annotations
 
+import datetime as dt
+
 import pandas as pd
 
 from src import db
@@ -20,6 +22,26 @@ def _s(v) -> str | None:
     return str(v)
 
 
+# Un épisode sorti depuis au plus ce nombre de jours est signalé « nouveau »
+NEW_EPISODE_DAYS = 7
+
+
+def _release_state(air_date, today: dt.date) -> tuple[bool, bool]:
+    """(sorti ?, sorti récemment ?) d'un épisode d'après sa date de sortie.
+
+    NULL = date inconnue (épisodes TV Time jamais datés) : considéré comme sorti,
+    comme avant l'ajout des dates. '' = annoncé par TMDB sans date : pas sorti.
+    """
+    if air_date is None or (isinstance(air_date, float) and pd.isna(air_date)):
+        return True, False
+    if air_date == "":
+        return False, False
+    d = dt.date.fromisoformat(str(air_date)[:10])
+    if d > today:
+        return False, False
+    return True, (today - d).days <= NEW_EPISODE_DAYS
+
+
 def series_summaries(ds: Dataset) -> list[SeriesSummary]:
     eps = ds.episodes
     pending = eps[(~eps["is_watched"]) & (~eps["special"])].sort_values(
@@ -29,19 +51,27 @@ def series_summaries(ds: Dataset) -> list[SeriesSummary]:
     reg = eps[(~eps["special"]) & (eps["season_number"] != 0)]
     times = reg.groupby("series_uuid")["watched_count"].min()
 
+    today = dt.date.today()
     out = []
     for r in ds.series[ds.series["n_episodes"] > 0].itertuples():
         ne = None
+        waiting = new_episode = False
         if r.series_uuid in nxt.index:
             e = nxt.loc[r.series_uuid]
             ne = NextEpisode(season=int(e["season_number"]), number=int(e["episode_number"]),
-                             name=_s(e["episode_name"]), episode_id=int(e["episode_id"]))
+                             name=_s(e["episode_name"]), episode_id=int(e["episode_id"]),
+                             air_date=_s(e["air_date"]))
+            # Tous les épisodes précédents sont vus (c'est le premier non vu) :
+            # s'il n'est pas sorti, le spectateur est à jour et attend.
+            aired, new_episode = _release_state(e["air_date"], today)
+            waiting = not aired
         out.append(SeriesSummary(
             uuid=r.series_uuid, title=r.series_title, poster_path=_s(r.poster_path),
             status=_s(r.status), n_watched=int(r.n_watched), n_episodes=int(r.n_episodes),
             completion=float(r.completion_rate), total_rewatch=int(r.total_rewatch),
             times_watched=int(times.get(r.series_uuid, 0)),
-            last_watched=_dt(r.last_watched), next_episode=ne))
+            last_watched=_dt(r.last_watched), next_episode=ne,
+            waiting=waiting, new_episode=new_episode))
     return out
 
 

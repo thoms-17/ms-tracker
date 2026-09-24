@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS episodes (
     imdb_id        TEXT,
     tvdb_id        INTEGER,
     runtime        INTEGER,
+    air_date       TEXT,  -- 'AAAA-MM-JJ' ; '' = annoncé sans date ; NULL = inconnue
     FOREIGN KEY(series_uuid) REFERENCES series(series_uuid) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS movies (
@@ -128,6 +129,8 @@ def init_db() -> None:
     ensure_column(conn, "series", "next_ep_season", "INTEGER")
     ensure_column(conn, "series", "next_ep_number", "INTEGER")
     ensure_column(conn, "series", "next_ep_name", "TEXT")
+    # Date de sortie par épisode : masque d'« En cours » les séries à jour en attente
+    ensure_column(conn, "episodes", "air_date", "TEXT")
     # Inscription + vérification d'email (bases créées avant l'ajout)
     ensure_column(conn, "users", "email", "TEXT")
     ensure_column(conn, "users", "email_verified", "INTEGER DEFAULT 0")

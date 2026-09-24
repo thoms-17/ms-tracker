@@ -29,9 +29,10 @@ def add_series_from_tmdb(user_id: int, tmdb_id: int, title: str, seasons: list[d
         sn = season["season_number"]
         for ep in season["episodes"]:
             conn.execute(
-                "INSERT OR IGNORE INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime)"
-                " VALUES (?,?,?,?,?,?,?)",
-                (su, sn, ep["episode_number"], ep.get("name"), int(sn == 0), int(sn == 0), ep.get("runtime")),
+                "INSERT OR IGNORE INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime,air_date)"
+                " VALUES (?,?,?,?,?,?,?,?)",
+                (su, sn, ep["episode_number"], ep.get("name"), int(sn == 0), int(sn == 0), ep.get("runtime"),
+                 ep.get("air_date")),
             )
     # Repli médiane pour d'éventuels épisodes sans durée (comme pour la synchro globale)
     vals = sorted(ep.get("runtime") for s in seasons for ep in s["episodes"] if ep.get("runtime"))
@@ -127,13 +128,52 @@ def refresh_series_from_tmdb(user_id: int, series_uuid: str, key: str) -> dict:
             if (ep.get("name") or "").strip().lower() in special_names.get(s, ()):
                 continue  # déjà présent comme spécial TV Time
             conn.execute(
-                "INSERT INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime)"
-                " VALUES (?,?,?,?,0,0,?)",
-                (series_uuid, s, en, ep.get("name"), ep.get("runtime")),
+                "INSERT INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime,air_date)"
+                " VALUES (?,?,?,?,0,0,?,?)",
+                (series_uuid, s, en, ep.get("name"), ep.get("runtime"), ep.get("air_date")),
             )
             added += 1
+        _store_air_dates(conn, series_uuid, s, eps)
     conn.commit(); conn.close()
     return {"status": "ok", "added": added}
+
+
+# Statuts TMDB d'une série encore en diffusion (des épisodes peuvent encore sortir)
+LIVE_STATUSES = {"Returning Series", "In Production", "Planned", "Pilot"}
+
+
+def _store_air_dates(conn, series_uuid: str, season: int, eps: list[dict]) -> None:
+    """Recopie les dates de sortie TMDB d'une saison sur les épisodes réguliers locaux.
+
+    Refusé si la saison locale compte plus d'épisodes réguliers que TMDB : la
+    numérotation diverge alors (Pokémon…) et on daterait les mauvais épisodes, ce
+    qui pourrait masquer à tort une série d'« En cours ».
+    """
+    regular = "series_uuid=? AND season_number=? AND COALESCE(special, 0) = 0"
+    n = conn.execute(f"SELECT COUNT(*) FROM episodes WHERE {regular}", (series_uuid, season)).fetchone()[0]
+    if n > len(eps):
+        return
+    conn.executemany(
+        f"UPDATE episodes SET air_date=? WHERE {regular} AND episode_number=?",
+        [(ep.get("air_date") or "", series_uuid, season, ep["episode_number"]) for ep in eps],
+    )
+
+
+def refresh_air_dates(conn, series_uuid: str, tmdb_id: int, tmdb_seasons: list[int], key: str) -> None:
+    """Met à jour les dates de sortie de la saison en cours (et des suivantes).
+
+    Seule la dernière saison locale compte : c'est là qu'un spectateur à jour attend
+    l'épisode suivant. Les saisons antérieures restent sans date (NULL = déjà sorties).
+    """
+    last = conn.execute(
+        "SELECT MAX(season_number) FROM episodes WHERE series_uuid=? AND season_number >= 1", (series_uuid,)
+    ).fetchone()[0]
+    if last is None:
+        return
+    for sn in sorted(s for s in tmdb_seasons if s >= last):
+        eps = enrich.fetch_season_episodes(tmdb_id, sn, key)
+        if eps:
+            _store_air_dates(conn, series_uuid, sn, eps)
 
 
 def sync_updates(user_id: int, key: str, progress=None) -> dict:
@@ -159,6 +199,10 @@ def sync_updates(user_id: int, key: str, progress=None) -> dict:
             (upd.get("status"), ne.get("air_date"), ne.get("season_number"),
              ne.get("episode_number"), ne.get("name"), su),
         )
+        # Série encore en diffusion : dates de sortie de la saison en cours, pour
+        # masquer d'« En cours » une série à jour dont l'épisode suivant n'est pas sorti.
+        if upd.get("status") in LIVE_STATUSES or ne:
+            refresh_air_dates(conn, su, tmdb_id, upd.get("seasons") or [], key)
         local_reg = conn.execute(
             "SELECT COUNT(*) FROM episodes WHERE series_uuid=? AND season_number>=1", (su,)).fetchone()[0]
         if (upd.get("number_of_episodes") or 0) > local_reg:

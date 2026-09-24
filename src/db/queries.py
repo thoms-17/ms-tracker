@@ -36,7 +36,7 @@ def load_dataset(user_id: int) -> loader.Dataset:
         """
         SELECT e.id AS episode_id, e.series_uuid, s.title AS series_title, s.status,
                e.season_number, e.is_specials, e.episode_number, e.name AS episode_name,
-               e.special, e.imdb_id, e.tvdb_id, e.runtime,
+               e.special, e.imdb_id, e.tvdb_id, e.runtime, e.air_date,
                COUNT(w.id) AS watched_count, MIN(w.watched_at) AS watched_at
         FROM episodes e
         JOIN series s ON s.series_uuid = e.series_uuid

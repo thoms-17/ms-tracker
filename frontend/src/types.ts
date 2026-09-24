@@ -6,6 +6,7 @@ export interface NextEpisode {
   number: number;
   name: string | null;
   episode_id: number;
+  air_date: string | null;
 }
 
 export interface SeriesSummary {
@@ -20,6 +21,10 @@ export interface SeriesSummary {
   times_watched: number;
   last_watched: string | null;
   next_episode: NextEpisode | null;
+  /** À jour, épisode suivant pas encore sorti : la série n'est pas « en cours ». */
+  waiting: boolean;
+  /** Épisode suivant sorti depuis peu : en tête d'« En cours », avec un badge. */
+  new_episode: boolean;
 }
 
 export interface EpisodeItem {
