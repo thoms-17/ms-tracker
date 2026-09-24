@@ -78,40 +78,60 @@ def refresh_series_from_tmdb(user_id: int, series_uuid: str, key: str) -> dict:
     if not tmdb_id:
         conn.close(); return {"status": "no_tmdb", "added": 0}
 
-    db_counts = {
-        s: (n, mx) for s, n, mx in conn.execute(
-            "SELECT season_number, COUNT(*), MAX(episode_number) FROM episodes WHERE series_uuid=? GROUP BY season_number",
-            (series_uuid,),
-        ).fetchall()
-    }
-    existing = set(conn.execute(
-        "SELECT season_number, episode_number FROM episodes WHERE series_uuid=?", (series_uuid,)).fetchall())
+    # TV Time range parfois des spéciaux dans une saison régulière (For All Mankind S4 :
+    # 10 épisodes + 9 spéciaux). TMDB, lui, les ignore (For All Mankind) ou les compte
+    # comme épisodes normaux (Black Mirror S2E4 « Blanc comme neige ») : on tient donc
+    # les deux décomptes, sans quoi le verrou bloquerait la série pour toujours.
+    counts: dict[int, list[int]] = {}  # saison -> [réguliers, spéciaux]
+    existing: set[tuple[int, int]] = set()  # (saison, numéro) des épisodes réguliers
+    special_names: dict[int, set[str]] = {}
+    for sn, en, name, sp in conn.execute(
+        "SELECT season_number, episode_number, name, COALESCE(special, 0) FROM episodes WHERE series_uuid=?",
+        (series_uuid,),
+    ).fetchall():
+        c = counts.setdefault(sn, [0, 0])
+        if sp and sn != 0:
+            c[1] += 1
+            special_names.setdefault(sn, set()).add((name or "").strip().lower())
+        else:
+            c[0] += 1
+            existing.add((sn, en))
 
     tmdb_seasons = {s["season_number"]: s["episodes"]
                     for s in enrich.fetch_tv_structure(tmdb_id, key)}
-    max_db_season = max((s for s in db_counts if s >= 1), default=0)
+    max_db_season = max((s for s in counts if s >= 1), default=0)
 
     # Verrou : les saisons passées doivent correspondre en nombre d'épisodes.
-    for s, (n, _mx) in db_counts.items():
+    for s, (n, n_sp) in counts.items():
         if s < 1:
             continue
         tmdb_n = len(tmdb_seasons.get(s, []))
-        if s not in tmdb_seasons or n > tmdb_n or (s < max_db_season and n != tmdb_n):
+        if s not in tmdb_seasons or n > tmdb_n:
+            conn.close(); return {"status": "unsafe", "added": 0}
+        if s < max_db_season and tmdb_n not in (n, n + n_sp):
             conn.close(); return {"status": "unsafe", "added": 0}
 
     added = 0
     for s, eps in tmdb_seasons.items():
-        if s < 1:  # on n'ajoute pas de spéciaux automatiquement
+        # ni spéciaux (saison 0), ni trous dans les saisons passées : seulement la fin
+        # de la saison en cours et les saisons entièrement nouvelles
+        if s < 1 or s < max_db_season:
             continue
+        n, n_sp = counts.get(s, [0, 0])
+        if n_sp and len(eps) == n + n_sp:
+            continue  # les épisodes « en plus » de TMDB sont nos spéciaux, déjà là
         for ep in eps:
             en = ep["episode_number"]
-            if (s, en) not in existing:
-                conn.execute(
-                    "INSERT INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime)"
-                    " VALUES (?,?,?,?,0,0,?)",
-                    (series_uuid, s, en, ep.get("name"), ep.get("runtime")),
-                )
-                added += 1
+            if (s, en) in existing:
+                continue
+            if (ep.get("name") or "").strip().lower() in special_names.get(s, ()):
+                continue  # déjà présent comme spécial TV Time
+            conn.execute(
+                "INSERT INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime)"
+                " VALUES (?,?,?,?,0,0,?)",
+                (series_uuid, s, en, ep.get("name"), ep.get("runtime")),
+            )
+            added += 1
     conn.commit(); conn.close()
     return {"status": "ok", "added": added}
 
