@@ -97,9 +97,10 @@ export const api = {
   history: (limit = 20) => req<HistoryItem[]>(`/history?limit=${limit}`),
   watchTime: () => req<WatchTime>("/stats/watch-time"),
 
-  // synchro TMDB (tâche de fond + polling)
+  // synchro TMDB (tâche de fond, déclenchée par AutoSync)
   syncStatus: () => req<SyncStatus>("/sync/status"),
-  startSync: () => req<{ running: boolean }>("/sync", { method: "POST" }),
+  // synchro quotidienne : le serveur ne lance rien si la dernière a moins de 24 h
+  autoSync: () => req<{ running: boolean }>("/sync/auto", { method: "POST" }),
 
   // mutations épisodes / séries
   watchEpisode: (id: number) => req(`/episodes/${id}/watch`, { method: "POST" }),

@@ -4,7 +4,7 @@ from __future__ import annotations
 import datetime as dt
 
 import pandas as pd
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends
 
 from src import db, enrich
 
@@ -54,7 +54,7 @@ def _do_sync(user_id: int, key: str):
 
 
 def start_sync_job(background: BackgroundTasks, user_id: int) -> bool:
-    """Démarre la synchro TMDB en tâche de fond si possible. Réutilisé après un import.
+    """Démarre la synchro TMDB en tâche de fond si possible (appelé par auto_sync).
     Renvoie True si une synchro a été (ou est déjà) lancée, False si clé TMDB absente."""
     if not enrich.get_api_key():
         return False
@@ -65,11 +65,31 @@ def start_sync_job(background: BackgroundTasks, user_id: int) -> bool:
     return True
 
 
-@router.post("/sync")
-def start_sync(background: BackgroundTasks, user_id: int = Uid):
-    if not start_sync_job(background, user_id):
-        raise HTTPException(503, "Clé TMDB absente")
-    return {"running": True}
+# Synchro automatique : au plus une fois par jour, déclenchée par l'ouverture de l'app.
+AUTO_SYNC_EVERY = pd.Timedelta(hours=24)
+# Après un échec (last_sync non mis à jour), on ne réessaie pas avant ce délai.
+AUTO_SYNC_RETRY = pd.Timedelta(hours=1)
+
+
+def _older_than(iso: str | None, delta: pd.Timedelta) -> bool:
+    return iso is None or pd.Timestamp.now() - pd.Timestamp(iso) >= delta
+
+
+@router.post("/sync/auto")
+def auto_sync(background: BackgroundTasks, user_id: int = Uid):
+    """Lance la synchro en tâche de fond si la dernière réussie date de plus de 24 h.
+
+    Appelée par le front à l'ouverture (et au retour au premier plan) : sans effet la
+    plupart du temps. Renvoie {'running': bool} — vrai si une synchro tourne.
+    """
+    job = _job_for(user_id)
+    if job["running"]:
+        return {"running": True}
+    if not (_older_than(db.get_meta(user_id, "last_sync"), AUTO_SYNC_EVERY)
+            and _older_than(db.get_meta(user_id, "last_sync_attempt"), AUTO_SYNC_RETRY)):
+        return {"running": False}
+    db.set_meta(user_id, "last_sync_attempt", pd.Timestamp.now().isoformat())
+    return {"running": start_sync_job(background, user_id)}
 
 
 @router.get("/sync/status")

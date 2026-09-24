@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "./api";
 import { useCloseOnScroll } from "./hooks";
 import { clearPersistedCache } from "./persist";
+import AutoSync from "./components/AutoSync";
 import SearchBar from "./components/SearchBar";
 import Spinner from "./components/Spinner";
 import Toast from "./components/Toast";
@@ -80,6 +81,7 @@ export default function App() {
       </main>
       <BottomNav onSearch={() => setSearchOpen(true)} />
       <Toast />
+      <AutoSync />
     </>
   );
 }

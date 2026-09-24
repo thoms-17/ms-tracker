@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
-import type { SeriesSummary, SyncResult, UpcomingItem } from "../types";
+import type { SeriesSummary, UpcomingItem } from "../types";
 import Confetti from "../components/Confetti";
 import Spinner from "../components/Spinner";
 import VusTab from "./VusTab";
@@ -135,61 +135,6 @@ function SeriesCard({ s, showNext, onComplete }: {
   );
 }
 
-function SyncControls() {
-  const qc = useQueryClient();
-  const [justFinished, setJustFinished] = useState<SyncResult | null>(null);
-
-  const status = useQuery({
-    queryKey: ["syncStatus"],
-    queryFn: api.syncStatus,
-    refetchInterval: (q) => (q.state.data?.running ? 800 : false),
-  });
-  const start = useMutation({
-    mutationFn: api.startSync,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["syncStatus"] }),
-  });
-
-  const running = status.data?.running ?? false;
-  const wasRunning = useRef(false);
-  useEffect(() => {
-    if (wasRunning.current && !running) {
-      // La synchro vient de finir → rafraîchit les données dérivées.
-      ["upcoming", "series", "movies", "watchTime", "history"].forEach((k) =>
-        qc.invalidateQueries({ queryKey: [k] }),
-      );
-      setJustFinished(status.data?.result ?? null);
-    }
-    wasRunning.current = running;
-  }, [running, qc, status.data?.result]);
-
-  const last = status.data?.last_sync;
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-        <button className="btn primary" disabled={running || start.isPending} onClick={() => start.mutate()}>
-          {running ? "Vérification en cours…" : "Vérifier les nouveautés"}
-        </button>
-        <span className="muted">
-          {last ? `Dernière vérification : ${new Date(last).toLocaleString("fr-FR")}` : "Jamais synchronisé"}
-        </span>
-      </div>
-      {running && (
-        <div className="bar" style={{ marginTop: 10, maxWidth: 360 }}>
-          <span style={{ width: `${Math.round((status.data?.progress ?? 0) * 100)}%` }} />
-        </div>
-      )}
-      {justFinished && !running && (
-        <p className="muted" style={{ marginTop: 8 }}>
-          {justFinished.checked} séries vérifiées
-          {justFinished.episodes_added > 0
-            ? ` · ${justFinished.episodes_added} nouvel(s) épisode(s) ajouté(s)`
-            : " · déjà à jour"}
-        </p>
-      )}
-    </div>
-  );
-}
-
 /** "2026-07-25" → "sam. 25 juil. 2026" (format français, sans décalage de fuseau). */
 function frDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -209,10 +154,9 @@ function Prochainement() {
   ];
   return (
     <>
-      <SyncControls />
       {up.isLoading && <Spinner />}
       {!up.isLoading && items.length === 0 && (
-        <p className="muted">Aucune sortie annoncée. Lance une vérification pour rafraîchir.</p>
+        <p className="muted">Aucune sortie annoncée pour tes séries.</p>
       )}
       {groups.map(([label, pred]) => {
         const g = items.filter(pred);
