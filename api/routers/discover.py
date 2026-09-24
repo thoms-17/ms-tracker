@@ -91,7 +91,9 @@ def track_series(tmdb_id: int, body: TrackRequest | None = None, user_id: int = 
                                    poster_path=meta.get("poster_path"))
     if body and body.mark_season is not None and body.mark_number is not None:
         ep_id = db.episode_id_of(user_id, uuid, body.mark_season, body.mark_number)
-        if ep_id:
+        if ep_id and body.catch_up:
+            db.catch_up_episode(user_id, ep_id)
+        elif ep_id:
             db.add_episode_watch(user_id, ep_id)
     deps.invalidate(user_id)
     return UuidResponse(uuid=uuid)

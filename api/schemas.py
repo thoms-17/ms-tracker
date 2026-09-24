@@ -187,6 +187,7 @@ class TmdbMoviePreview(BaseModel):
 class TrackRequest(BaseModel):
     mark_season: int | None = None
     mark_number: int | None = None
+    catch_up: bool = False  # marque aussi les épisodes réguliers précédents
 
 
 class UpcomingItem(BaseModel):

@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import Confetti from "../components/Confetti";
+import Modal from "../components/Modal";
 import Spinner from "../components/Spinner";
-import { useCloseOnScroll } from "../hooks";
 import { signalerEchec } from "../toast";
 import WatchControl from "../components/WatchControl";
 import WatchProviders from "../components/WatchProviders";
@@ -277,26 +276,6 @@ function Episode({ uuid, e, retard, onChange }: {
         </Modal>
       )}
     </div>
-  );
-}
-
-/** Boîte de dialogue centrée, rendue dans un portail sur <body>. */
-function Modal({ onClose, children }: { onClose: () => void; children: ReactNode }) {
-  useEffect(() => {
-    const onKey = (ev: KeyboardEvent) => ev.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  useCloseOnScroll(onClose);
-
-  return createPortal(
-    <div className="modal-layer" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" onClick={(ev) => ev.stopPropagation()}>
-        {children}
-      </div>
-    </div>,
-    document.body,
   );
 }
 

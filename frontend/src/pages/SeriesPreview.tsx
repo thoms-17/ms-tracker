@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
+import Modal from "../components/Modal";
 import Spinner from "../components/Spinner";
 import WatchControl from "../components/WatchControl";
 import WatchProviders from "../components/WatchProviders";
@@ -15,9 +16,12 @@ export default function SeriesPreview() {
 
   const prev = useQuery({ queryKey: ["tvPreview", id], queryFn: () => api.tvPreview(id) });
 
+  // Épisode cliqué alors que des épisodes le précèdent : on demande s'il faut les rattraper.
+  const [ask, setAsk] = useState<{ season: number; number: number; avant: number; saisons: number } | null>(null);
+
   // Cocher un épisode ajoute la série au suivi, puis bascule sur la page éditable.
   const track = useMutation({
-    mutationFn: (mark: { season: number; number: number }) => api.trackSeries(id, mark),
+    mutationFn: (mark: { season: number; number: number; catchUp?: boolean }) => api.trackSeries(id, mark),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["series"] });
       qc.invalidateQueries({ queryKey: ["history"] });
@@ -37,6 +41,22 @@ export default function SeriesPreview() {
   const url = posterUrl(p.poster_path, true);
   // Ouverte par défaut : la première saison régulière (les spéciaux restent repliés).
   const firstRegular = p.seasons.find((s) => s.season_number !== 0) ?? p.seasons[0];
+
+  /**
+   * Comme sur une série suivie : cocher un épisode régulier qui n'est pas le premier
+   * propose de marquer aussi tous ceux qui le précèdent (rien n'est encore vu ici).
+   * Un spécial (saison 0) ne rattrape rien.
+   */
+  const onPick = (season: number, number: number) => {
+    if (season === 0) return track.mutate({ season, number });
+    const avant = p.seasons.filter((s) => s.season_number !== 0 && s.season_number <= season)
+      .flatMap((s) => s.episodes.map((e) => ({ s: s.season_number, n: e.episode_number })))
+      .filter((e) => e.s < season || e.n < number);
+    if (avant.length === 0) return track.mutate({ season, number });
+    setAsk({ season, number, avant: avant.length, saisons: new Set(avant.filter((e) => e.s < season).map((e) => e.s)).size });
+  };
+  const num = ask && `S${String(ask.season).padStart(2, "0")}E${String(ask.number).padStart(2, "0")}`;
+  const pluriel = (ask?.avant ?? 0) > 1;
 
   return (
     <>
@@ -62,9 +82,30 @@ export default function SeriesPreview() {
           s={s}
           open={s.season_number === firstRegular?.season_number}
           pending={track.isPending}
-          onPick={(number) => track.mutate({ season: s.season_number, number })}
+          onPick={(number) => onPick(s.season_number, number)}
         />
       ))}
+
+      {ask && (
+        <Modal onClose={() => setAsk(null)}>
+          <h3 className="modal-title">Rattraper les épisodes précédents ?</h3>
+          <p className="muted">
+            {ask.avant} épisode{pluriel ? "s" : ""} avant {num} {pluriel ? "ne sont pas vus" : "n'est pas vu"}
+            {ask.saisons > 0 && (
+              <>, dont {ask.saisons > 1 ? `ceux de ${ask.saisons} saisons précédentes` : "ceux de la saison précédente"}</>
+            )}.
+            {" "}Veux-tu {pluriel ? "les" : "l'"} marquer comme vu{pluriel ? "s" : ""} aussi ?
+          </p>
+          <div className="modal-actions">
+            <button className="btn" onClick={() => { track.mutate({ season: ask.season, number: ask.number }); setAsk(null); }}>
+              Seulement {num}
+            </button>
+            <button className="btn primary" onClick={() => { track.mutate({ season: ask.season, number: ask.number, catchUp: true }); setAsk(null); }}>
+              Marquer les {ask.avant + 1} épisodes
+            </button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }

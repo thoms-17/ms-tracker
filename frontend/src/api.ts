@@ -122,11 +122,13 @@ export const api = {
   // découverte TMDB
   search: (q: string) => req<SearchItem[]>(`/search?q=${encodeURIComponent(q)}`),
   tvPreview: (tmdbId: number) => req<TmdbSeriesPreview>(`/tmdb/tv/${tmdbId}`),
-  trackSeries: (tmdbId: number, mark?: { season: number; number: number }) =>
+  trackSeries: (tmdbId: number, mark?: { season: number; number: number; catchUp?: boolean }) =>
     req<{ uuid: string }>(`/tmdb/tv/${tmdbId}/track`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(mark ? { mark_season: mark.season, mark_number: mark.number } : {}),
+      body: JSON.stringify(
+        mark ? { mark_season: mark.season, mark_number: mark.number, catch_up: !!mark.catchUp } : {},
+      ),
     }),
   moviePreview: (tmdbId: number) => req<TmdbMoviePreview>(`/tmdb/movie/${tmdbId}`),
   watchMovieFromTmdb: (tmdbId: number) =>
