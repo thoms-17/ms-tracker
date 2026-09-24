@@ -24,6 +24,9 @@ def _s(v) -> str | None:
 
 # Un épisode sorti depuis au plus ce nombre de jours est signalé « nouveau »
 NEW_EPISODE_DAYS = 7
+# Sans épisode coché depuis ce nombre de jours, une série « En cours » passe dans
+# « Pas regardées depuis un moment »
+RECENT_DAYS = 14
 
 
 def _release_state(air_date, today: dt.date) -> tuple[bool, bool]:
@@ -52,6 +55,7 @@ def series_summaries(ds: Dataset) -> list[SeriesSummary]:
     times = reg.groupby("series_uuid")["watched_count"].min()
 
     today = dt.date.today()
+    recent_since = pd.Timestamp.now() - pd.Timedelta(days=RECENT_DAYS)
     out = []
     for r in ds.series[ds.series["n_episodes"] > 0].itertuples():
         ne = None
@@ -71,7 +75,10 @@ def series_summaries(ds: Dataset) -> list[SeriesSummary]:
             completion=float(r.completion_rate), total_rewatch=int(r.total_rewatch),
             times_watched=int(times.get(r.series_uuid, 0)),
             last_watched=_dt(r.last_watched), next_episode=ne,
-            waiting=waiting, new_episode=new_episode))
+            waiting=waiting, new_episode=new_episode,
+            # une série qui revient avec un nouvel épisode est « récente », même
+            # après des mois sans visionnage
+            recent=new_episode or (pd.notna(r.last_watched) and r.last_watched >= recent_since)))
     return out
 
 

@@ -92,6 +92,9 @@ class SeriesSummary(BaseModel):
     waiting: bool = False
     # Épisode suivant sorti depuis peu : remonte en tête d'« En cours » avec un badge
     new_episode: bool = False
+    # Regardée récemment (épisode coché depuis moins de RECENT_DAYS) ou nouvel épisode :
+    # section « Regardées récemment » ; sinon « Pas regardées depuis un moment »
+    recent: bool = False
 
 
 class EpisodeItem(BaseModel):

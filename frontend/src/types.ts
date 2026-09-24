@@ -25,6 +25,8 @@ export interface SeriesSummary {
   waiting: boolean;
   /** Épisode suivant sorti depuis peu : en tête d'« En cours », avec un badge. */
   new_episode: boolean;
+  /** Vue ces 14 derniers jours (ou nouvel épisode) : « Regardées récemment ». */
+  recent: boolean;
 }
 
 export interface EpisodeItem {

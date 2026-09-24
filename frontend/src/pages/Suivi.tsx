@@ -43,6 +43,9 @@ export default function Suivi() {
       (a.new_episode && b.new_episode
         ? (b.next_episode?.air_date ?? "").localeCompare(a.next_episode?.air_date ?? "")
         : (b.last_watched ?? "").localeCompare(a.last_watched ?? "")));
+  // Comme TV Time : ce qu'on regarde en ce moment d'abord, le reste replié en dessous.
+  const recent = inProgress.filter((s) => s.recent);
+  const stale = inProgress.filter((s) => !s.recent);
   const completed = all.filter((s) => s.completion >= 1);
 
   return (
@@ -78,9 +81,24 @@ export default function Suivi() {
       </div>
 
       {tab === "encours" && (
-        <div className="grid">
-          {inProgress.map((s) => <SeriesCard key={s.uuid} s={s} showNext onComplete={celebrate} />)}
-        </div>
+        <>
+          <h3 className="section-title">Regardées récemment ({recent.length})</h3>
+          {recent.length === 0 ? (
+            <p className="muted">Aucune série regardée ces deux dernières semaines.</p>
+          ) : (
+            <div className="grid">
+              {recent.map((s) => <SeriesCard key={s.uuid} s={s} showNext onComplete={celebrate} />)}
+            </div>
+          )}
+          {stale.length > 0 && (
+            <details className="section-fold">
+              <summary className="section-title">Pas regardées depuis un moment ({stale.length})</summary>
+              <div className="grid">
+                {stale.map((s) => <SeriesCard key={s.uuid} s={s} showNext onComplete={celebrate} />)}
+              </div>
+            </details>
+          )}
+        </>
       )}
 
       {tab === "vus" && <VusTab />}
