@@ -14,6 +14,9 @@
   --glass-hi: rgba(255, 255, 255, 0.08); /* reflet interne haut */
   --glass-blur: 18px;
   --glass-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  /* Liquid glass « iOS 26 » (barre du bas) : plus transparent, bord lumineux */
+  --lg-tint: #6cb0ff;
+  --lg-spring: cubic-bezier(.34, 1.4, .64, 1);
 
   color-scheme: dark;
 }
@@ -435,6 +438,52 @@ a.histo-ligne:hover { background: rgba(255, 255, 255, 0.04); }
 /* Barre de navigation flottante : mobile uniquement (affichée dans le @media) */
 .bottom-nav { display: none; }
 
+/* Matériau « liquid glass » : verre clair très flouté, bord éclairé en diagonale
+   (reflet spéculaire) et lueur interne. Le bord est un liseré en dégradé découpé
+   par masque, pour être plus lumineux en haut à gauche et en bas à droite. */
+.lg {
+  background: linear-gradient(180deg, rgba(58, 60, 70, 0.38), rgba(22, 24, 30, 0.5));
+  backdrop-filter: blur(14px) saturate(190%) brightness(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(190%) brightness(1.05);
+  box-shadow:
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.22),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.06),
+    inset 0 0 18px rgba(255, 255, 255, 0.04),
+    0 10px 30px rgba(0, 0, 0, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.lg::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.1) 30%,
+    rgba(255, 255, 255, 0.03) 60%, rgba(255, 255, 255, 0.32));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+/* La bulle n'a pas besoin de son propre flou : elle est déjà dans une barre floutée */
+.bn-bubble-body.lg { backdrop-filter: none; -webkit-backdrop-filter: none; position: relative; }
+
+/* Étirement de la bulle quand elle change d'onglet (effet « goutte ») */
+@keyframes lg-stretch {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.16, 0.86); }
+  100% { transform: scale(1); }
+}
+
+/* Ressort plus fidèle (léger rebond puis stabilisation) là où linear() est supporté */
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --lg-spring: linear(0, 0.063, 0.225 4.7%, 0.519 10%, 0.765 15.4%, 0.917 20.6%,
+      1.006 25.9%, 1.043 30.9%, 1.05 35.5%, 1.04 40.4%, 1.021 46.8%, 1.004 55.3%,
+      0.996 66.4%, 1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bn-bubble, .bn-bubble-body, .bn-search { transition: none !important; animation: none !important; }
+}
+
 /* Accueil d'un compte encore vide */
 .empty-state {
   max-width: 520px; margin: 24px auto; display: flex; flex-direction: column; gap: 12px;
@@ -658,40 +707,81 @@ a.histo-ligne:hover { background: rgba(255, 255, 255, 0.04); }
   /* Les onglets du haut sont remplacés par la barre du bas sur mobile */
   .tabs { display: none; }
 
-  /* Barre de navigation flottante — liquid glass, détachée du bas de l'écran */
+  /* Barre de navigation flottante — liquid glass façon iOS 26 : une capsule
+     d'onglets + une loupe ronde détachée, flottant au-dessus du contenu. */
   .bottom-nav {
     display: flex;
+    align-items: center;
+    gap: 10px;
     position: fixed;
     left: 50%;
     transform: translateX(-50%);
     bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
     z-index: 50;
-    gap: 4px;
-    padding: 7px;
     width: max-content;
     max-width: calc(100vw - 24px);
-    border-radius: 28px;
-    background: var(--glass-strong);
-    border: 1px solid var(--glass-brd);
-    backdrop-filter: blur(26px) saturate(180%);
-    -webkit-backdrop-filter: blur(26px) saturate(180%);
-    box-shadow: 0 1px 0 var(--glass-hi) inset, 0 12px 36px rgba(0, 0, 0, 0.5);
   }
+  .bn-bar {
+    position: relative;
+    display: flex;
+    padding: 5px;
+    border-radius: 999px;
+    touch-action: none; /* le glissé horizontal change d'onglet, sans défiler la page */
+    user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .bn-search {
+    position: relative;
+    width: 62px; height: 62px; /* = hauteur de la capsule d'onglets */
+    flex: none;
+    display: grid; place-items: center;
+    padding: 0; border: none; border-radius: 50%;
+    color: var(--text); cursor: pointer;
+    transition: transform .45s var(--lg-spring);
+  }
+  .bn-search svg { width: 24px; height: 24px; }
+  .bn-search:active { transform: scale(1.1); }
+
   .bn-item {
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
-    padding: 8px 12px; border-radius: 20px;
-    color: var(--muted); font-size: 11px; font-weight: 600; line-height: 1;
-    transition: color .2s ease, background .2s ease;
-    /* reset pour l'item <button> (loupe) — sans effet sur les <a> */
-    background: none; border: none; font-family: inherit; cursor: pointer;
+    position: relative; z-index: 1; /* au-dessus de la bulle */
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    height: 52px; padding: 0 14px; border-radius: 999px;
+    color: var(--text); font-size: 10.5px; font-weight: 600; line-height: 1;
+    transition: color .25s ease;
+    -webkit-tap-highlight-color: transparent;
   }
   .bn-item svg { width: 22px; height: 22px; }
-  .bn-item.active {
-    color: #fff;
-    background: linear-gradient(160deg, rgba(57, 135, 229, 0.92), rgba(57, 135, 229, 0.6));
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 4px 14px rgba(57, 135, 229, 0.4);
+  .bn-item.active { color: var(--lg-tint); }
+
+  /* Bulle de sélection : glisse d'un onglet à l'autre avec un ressort, suit le doigt
+     pendant un glissé et grossit comme une loupe tant qu'on appuie. */
+  .bn-bubble {
+    position: absolute; top: 5px; bottom: 5px; left: 0;
+    opacity: 0;
+    transition:
+      transform .55s var(--lg-spring),
+      width .55s var(--lg-spring),
+      opacity .2s ease;
+    pointer-events: none;
+  }
+  .bn-bubble.visible { opacity: 1; }
+  .bn-bar.dragging .bn-bubble { transition: transform .1s linear, width .3s var(--lg-spring); }
+  .bn-bubble-body {
+    display: block; height: 100%; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.13);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.3),
+      inset 0 -1px 1px rgba(255, 255, 255, 0.08),
+      0 2px 10px rgba(0, 0, 0, 0.25);
+    animation: lg-stretch .55s var(--lg-spring);
+    transition: transform .4s var(--lg-spring), background .2s ease;
+  }
+  .bn-bar.pressed .bn-bubble-body {
+    transform: scale(1.14, 1.2);
+    background: rgba(255, 255, 255, 0.2);
   }
 
+  /* Les messages passent au-dessus de la barre de navigation flottante */
   /* Les messages passent au-dessus de la barre de navigation flottante */
   .toasts { bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); }
 
