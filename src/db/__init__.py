@@ -18,7 +18,7 @@ from .auth import (RegistrationError, create_email_token, create_invite,
                    verify_email_token)
 from .connection import DB_PATH, NotOwned, get_conn
 from .mutations import (add_episode_watch, add_movie_watch, catch_up_episode,
-                        mark_season, remove_last_episode_watch,
+                        dismiss_rewatch, mark_season, remove_last_episode_watch,
                         remove_last_movie_watch, remove_season_watch,
                         rewatch_season, set_episode_unwatched, set_meta,
                         set_movie_unwatched)
@@ -38,7 +38,7 @@ __all__ = [
     "series_uuid_by_tmdb", "episode_id_of", "runtime_coverage", "image_coverage",
     "get_meta", "set_meta", "upcoming_episodes", "movie_by_tmdb", "recent_watches",
     "add_episode_watch", "catch_up_episode", "remove_last_episode_watch", "set_episode_unwatched",
-    "mark_season", "rewatch_season", "remove_season_watch",
+    "mark_season", "rewatch_season", "remove_season_watch", "dismiss_rewatch",
     "add_movie_watch", "remove_last_movie_watch", "set_movie_unwatched",
     "add_series_from_tmdb", "add_movie_from_tmdb", "refresh_series_from_tmdb",
     "sync_runtimes", "sync_images", "sync_updates",

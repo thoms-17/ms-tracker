@@ -131,6 +131,8 @@ def init_db() -> None:
     ensure_column(conn, "series", "next_ep_name", "TEXT")
     # Date de sortie par épisode : masque d'« En cours » les séries à jour en attente
     ensure_column(conn, "episodes", "air_date", "TEXT")
+    # Revisionnage retiré d'« En cours » : masqué jusqu'au prochain visionnage
+    ensure_column(conn, "series", "rewatch_dismissed_at", "TEXT")
     # Inscription + vérification d'email (bases créées avant l'ajout)
     ensure_column(conn, "users", "email", "TEXT")
     ensure_column(conn, "users", "email_verified", "INTEGER DEFAULT 0")

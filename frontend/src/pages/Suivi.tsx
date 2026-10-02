@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import type { SeriesSummary, UpcomingItem } from "../types";
 import Confetti from "../components/Confetti";
+import Modal from "../components/Modal";
 import Spinner from "../components/Spinner";
 import VusTab from "./VusTab";
 
@@ -37,12 +38,15 @@ export default function Suivi() {
   if (all.length === 0 && (movies.data?.length ?? 0) === 0) return <EmptySuivi />;
   // Une série à jour dont l'épisode suivant n'est pas sorti attend dans « Prochainement ».
   // Dès qu'il sort, elle revient ici, en tête (la plus récente sortie d'abord).
-  const inProgress = all.filter((s) => s.n_watched > 0 && s.completion < 1 && !s.waiting)
+  // Un revisionnage en cours n'apparaît que s'il est récent : abandonné, la série
+  // reste seulement dans « Vus ».
+  const inProgress = all
+    .filter((s) => (s.n_watched > 0 && s.completion < 1 && !s.waiting) || (s.rewatch && s.recent))
     .sort((a, b) =>
       Number(b.new_episode) - Number(a.new_episode) ||
       (a.new_episode && b.new_episode
         ? (b.next_episode?.air_date ?? "").localeCompare(a.next_episode?.air_date ?? "")
-        : (b.last_watched ?? "").localeCompare(a.last_watched ?? "")));
+        : (b.last_activity ?? "").localeCompare(a.last_activity ?? "")));
   // Comme TV Time : ce qu'on regarde en ce moment d'abord, le reste replié en dessous.
   const recent = inProgress.filter((s) => s.recent);
   const stale = inProgress.filter((s) => !s.recent);
@@ -125,23 +129,58 @@ function SeriesCard({ s, showNext, onComplete }: {
 }) {
   const qc = useQueryClient();
   const url = posterUrl(s.poster_path);
+  // Dans « En cours », un revisionnage affiche la progression de CE passage.
+  const rw = showNext ? s.rewatch : null;
+  const [vus, total] = rw ? [rw.watched, rw.total] : [s.n_watched, s.n_episodes];
   const next = useMutation({
-    mutationFn: () => api.markNext(s.uuid),
+    // revisionnage : +1 visionnage sur le prochain épisode du passage (déjà vu, donc
+    // pas « le prochain non vu » que choisit markNext)
+    mutationFn: () => (rw && s.next_episode ? api.watchEpisode(s.next_episode.episode_id) : api.markNext(s.uuid)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["series"] });
       qc.invalidateQueries({ queryKey: ["history"] });
-      // Ce visionnage était-il le dernier ? → série terminée : confettis.
-      if (s.n_episodes > 0 && s.n_watched + 1 >= s.n_episodes) onComplete?.();
+      // Ce visionnage était-il le dernier (de la série ou du passage) ? → confettis.
+      if (total > 0 && vus + 1 >= total) onComplete?.();
     },
+  });
+  const [askDismiss, setAskDismiss] = useState(false);
+  const dismiss = useMutation({
+    mutationFn: () => api.dismissRewatch(s.uuid),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["series"] }),
   });
   return (
     <div className="card">
-      <Link to={`/series/${s.uuid}`} className="poster-wrap">
-        {url ? <img className="poster" src={url} alt={s.title} /> : <div className="poster" />}
-        {showNext && s.new_episode && <span className="new-badge">Nouvel épisode</span>}
-      </Link>
-      <div className="bar"><span style={{ width: `${Math.min(s.completion * 100, 100)}%` }} /></div>
-      <span className="sub">{s.n_watched}/{s.n_episodes}</span>
+      <div className="poster-wrap">
+        <Link to={`/series/${s.uuid}`}>
+          {url ? <img className="poster" src={url} alt={s.title} /> : <div className="poster" />}
+          {showNext && s.new_episode && <span className="new-badge">Nouvel épisode</span>}
+          {rw && <span className="new-badge rewatch-badge">Revisionnage · {rw.pass_number}e</span>}
+        </Link>
+        {rw && (
+          <button type="button" className="dismiss-btn" aria-label="Retirer d'En cours"
+            title="Retirer d'En cours" onClick={() => setAskDismiss(true)}>
+            ×
+          </button>
+        )}
+      </div>
+      {askDismiss && rw && (
+        <Modal onClose={() => setAskDismiss(false)}>
+          <h3 className="modal-title">Retirer {s.title} d'« En cours » ?</h3>
+          <p className="muted">
+            La série disparaît d'ici jusqu'à ce que tu revoies un épisode.
+            Tes visionnages restent enregistrés et la série reste dans « Vus ».
+          </p>
+          <div className="modal-actions">
+            <button className="btn" onClick={() => setAskDismiss(false)}>Annuler</button>
+            <button className="btn primary" disabled={dismiss.isPending}
+              onClick={() => { dismiss.mutate(); setAskDismiss(false); }}>
+              Retirer
+            </button>
+          </div>
+        </Modal>
+      )}
+      <div className="bar"><span style={{ width: `${total > 0 ? Math.min((vus / total) * 100, 100) : 0}%` }} /></div>
+      <span className="sub">{vus}/{total}</span>
       <Link to={`/series/${s.uuid}`} className="title">{s.title}</Link>
       {showNext && s.next_episode && (
         <button className="btn" disabled={next.isPending} onClick={() => next.mutate()}>

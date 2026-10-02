@@ -74,6 +74,15 @@ def watch_next(uuid: str, user_id: int = Uid):
     db.add_episode_watch(user_id, int(nxt["episode_id"])); deps.invalidate(user_id)
 
 
+@router.post("/series/{uuid}/rewatch/dismiss", status_code=204)
+def dismiss_rewatch(uuid: str, user_id: int = Uid):
+    """Retire d'« En cours » le revisionnage en cours, jusqu'au prochain épisode coché."""
+    s = next((x for x in serializers.series_summaries(deps.get_dataset(user_id)) if x.uuid == uuid), None)
+    if s is None or s.rewatch is None:
+        raise HTTPException(404, "Aucun revisionnage en cours pour cette série")
+    db.dismiss_rewatch(user_id, uuid); deps.invalidate(user_id)
+
+
 @router.post("/series/{uuid}/seasons/{season}/mark", response_model=UnwatchResult)
 def mark_season(uuid: str, season: int, watched: bool = True, user_id: int = Uid):
     untracked = db.mark_season(user_id, uuid, season, watched); deps.invalidate(user_id)

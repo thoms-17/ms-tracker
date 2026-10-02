@@ -37,7 +37,8 @@ def load_dataset(user_id: int) -> loader.Dataset:
         SELECT e.id AS episode_id, e.series_uuid, s.title AS series_title, s.status,
                e.season_number, e.is_specials, e.episode_number, e.name AS episode_name,
                e.special, e.imdb_id, e.tvdb_id, e.runtime, e.air_date,
-               COUNT(w.id) AS watched_count, MIN(w.watched_at) AS watched_at
+               COUNT(w.id) AS watched_count, MIN(w.watched_at) AS watched_at,
+               MAX(w.watched_at) AS last_watch_at
         FROM episodes e
         JOIN series s ON s.series_uuid = e.series_uuid
         LEFT JOIN watches w ON w.episode_id = e.id
@@ -47,6 +48,7 @@ def load_dataset(user_id: int) -> loader.Dataset:
         conn, params=(user_id,),
     )
     episodes["watched_at"] = loader._to_datetime(episodes["watched_at"])
+    episodes["last_watch_at"] = loader._to_datetime(episodes["last_watch_at"])
     episodes["is_watched"] = episodes["watched_count"] > 0
     episodes["rewatch_count"] = (episodes["watched_count"] - 1).clip(lower=0)
     for col in ["is_specials", "special"]:
@@ -54,11 +56,13 @@ def load_dataset(user_id: int) -> loader.Dataset:
     episodes = loader._mark_bulk_imports(episodes)
 
     series_base = pd.read_sql_query(
-        "SELECT series_uuid, title AS series_title, status, is_favorite, imdb_id, tvdb_id, tmdb_id, poster_path, created_at "
+        "SELECT series_uuid, title AS series_title, status, is_favorite, imdb_id, tvdb_id, tmdb_id, poster_path, created_at, "
+        "rewatch_dismissed_at "
         "FROM series WHERE user_id = ?",
         conn, params=(user_id,),
     )
     series_base["created_at"] = loader._to_datetime(series_base["created_at"])
+    series_base["rewatch_dismissed_at"] = loader._to_datetime(series_base["rewatch_dismissed_at"])
     series_base["is_favorite"] = series_base["is_favorite"].astype(bool)
     conn.close()
 
@@ -84,6 +88,8 @@ def _aggregate_series(series_base: pd.DataFrame, episodes: pd.DataFrame) -> pd.D
             total_rewatch=("rewatch_count", "sum"),
             first_watched=("watched_at", "min"),
             last_watched=("watched_at", "max"),
+            # tous visionnages confondus, revisionnages compris (« Revu » = activité)
+            last_activity=("last_watch_at", "max"),
         )
         .reset_index()
     )

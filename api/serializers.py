@@ -8,7 +8,7 @@ import pandas as pd
 from src import db
 from src.loader import Dataset
 
-from .schemas import (EpisodeItem, HistoryItem, MovieItem, NextEpisode,
+from .schemas import (EpisodeItem, HistoryItem, MovieItem, NextEpisode, Rewatch,
                       SeasonGroup, SeriesDetail, SeriesSummary)
 
 
@@ -45,6 +45,25 @@ def _release_state(air_date, today: dt.date) -> tuple[bool, bool]:
     return True, (today - d).days <= NEW_EPISODE_DAYS
 
 
+def _rewatch_in_progress(reg: pd.DataFrame) -> tuple[Rewatch, pd.Series] | None:
+    """Revisionnage en cours d'une série terminée, et son prochain épisode.
+
+    Les épisodes réguliers (dans l'ordre) d'une série vue en entier ont tous au moins
+    `lo` passages. Un revisionnage en cours, c'est un début de série (S1E1, S1E2…)
+    revu une fois de plus que le reste, ET revu après tout le reste : sinon c'est un
+    simple rafraîchissement (S1 revue avant la sortie de la S2, regardée ensuite).
+    Des épisodes revus çà et là (un épisode préféré au milieu) sont ignorés.
+    """
+    counts = reg["watched_count"].tolist()
+    lo = min(counts)
+    k = sum(c > lo for c in counts)
+    if lo == 0 or k == 0 or any(c > lo for c in counts[k:]):
+        return None
+    if not reg["last_watch_at"].iloc[:k].max() > reg["last_watch_at"].iloc[k:].max():
+        return None  # la suite a été regardée après : rafraîchissement
+    return Rewatch(pass_number=lo + 1, watched=k, total=len(counts)), reg.iloc[k]
+
+
 def series_summaries(ds: Dataset) -> list[SeriesSummary]:
     eps = ds.episodes
     pending = eps[(~eps["is_watched"]) & (~eps["special"])].sort_values(
@@ -53,6 +72,7 @@ def series_summaries(ds: Dataset) -> list[SeriesSummary]:
     # Visionnages complets de la série = min des compteurs de ses épisodes réguliers.
     reg = eps[(~eps["special"]) & (eps["season_number"] != 0)]
     times = reg.groupby("series_uuid")["watched_count"].min()
+    reg_by_series = dict(tuple(reg.sort_values(["season_number", "episode_number"]).groupby("series_uuid")))
 
     today = dt.date.today()
     recent_since = pd.Timestamp.now() - pd.Timedelta(days=RECENT_DAYS)
@@ -69,16 +89,30 @@ def series_summaries(ds: Dataset) -> list[SeriesSummary]:
             # s'il n'est pas sorti, le spectateur est à jour et attend.
             aired, new_episode = _release_state(e["air_date"], today)
             waiting = not aired
+        rw = None
+        if r.n_watched >= r.n_episodes and r.series_uuid in reg_by_series:  # vue en entier
+            found = _rewatch_in_progress(reg_by_series[r.series_uuid])
+            # retiré d'« En cours » par l'utilisateur, et rien revu depuis : masqué
+            if found and pd.notna(r.rewatch_dismissed_at) and r.last_activity <= r.rewatch_dismissed_at:
+                found = None
+            if found:
+                rw, e = found
+                ne = NextEpisode(season=int(e["season_number"]), number=int(e["episode_number"]),
+                                 name=_s(e["episode_name"]), episode_id=int(e["episode_id"]),
+                                 air_date=_s(e["air_date"]))
+        active = pd.notna(r.last_activity) and r.last_activity >= recent_since
         out.append(SeriesSummary(
             uuid=r.series_uuid, title=r.series_title, poster_path=_s(r.poster_path),
             status=_s(r.status), n_watched=int(r.n_watched), n_episodes=int(r.n_episodes),
             completion=float(r.completion_rate), total_rewatch=int(r.total_rewatch),
             times_watched=int(times.get(r.series_uuid, 0)),
-            last_watched=_dt(r.last_watched), next_episode=ne,
+            last_watched=_dt(r.last_watched), last_activity=_dt(r.last_activity),
+            next_episode=ne, rewatch=rw,
             waiting=waiting, new_episode=new_episode,
             # une série qui revient avec un nouvel épisode est « récente », même
-            # après des mois sans visionnage
-            recent=new_episode or (pd.notna(r.last_watched) and r.last_watched >= recent_since)))
+            # après des mois sans visionnage ; un revisionnage, s'il a bougé il y a
+            # moins de RECENT_DAYS
+            recent=new_episode or active))
     return out
 
 

@@ -188,6 +188,18 @@ def remove_season_watch(user_id: int, series_uuid: str, season_number: int) -> b
     return untracked
 
 
+def dismiss_rewatch(user_id: int, series_uuid: str) -> None:
+    """Masque d'« En cours » le revisionnage de la série jusqu'au prochain visionnage.
+
+    On note l'instant du retrait : tout épisode coché ensuite la fait réapparaître."""
+    conn = get_conn()
+    if not owns_series(conn, series_uuid, user_id):
+        conn.close(); raise NotOwned()
+    conn.execute("UPDATE series SET rewatch_dismissed_at=? WHERE series_uuid=?",
+                 (fmt(pd.Timestamp.now()), series_uuid))
+    conn.commit(); conn.close()
+
+
 def set_meta(user_id: int, key: str, value: str) -> None:
     conn = get_conn()
     conn.execute(

@@ -9,6 +9,13 @@ export interface NextEpisode {
   air_date: string | null;
 }
 
+/** Revisionnage en cours : passage n°pass_number, watched/total épisodes revus. */
+export interface Rewatch {
+  pass_number: number;
+  watched: number;
+  total: number;
+}
+
 export interface SeriesSummary {
   uuid: string;
   title: string;
@@ -20,7 +27,10 @@ export interface SeriesSummary {
   total_rewatch: number;
   times_watched: number;
   last_watched: string | null;
+  /** Dernier visionnage, revisionnages compris. */
+  last_activity: string | null;
   next_episode: NextEpisode | null;
+  rewatch: Rewatch | null;
   /** À jour, épisode suivant pas encore sorti : la série n'est pas « en cours ». */
   waiting: boolean;
   /** Épisode suivant sorti depuis peu : en tête d'« En cours », avec un badge. */

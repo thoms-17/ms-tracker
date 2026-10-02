@@ -111,6 +111,8 @@ export const api = {
   removeEpisodeWatch: (id: number) => req<UnwatchResult>(`/episodes/${id}/watch`, { method: "DELETE" }),
   unwatchEpisode: (id: number) => req<UnwatchResult>(`/episodes/${id}/watches`, { method: "DELETE" }),
   markNext: (uuid: string) => req(`/series/${uuid}/next`, { method: "POST" }),
+  // retire d'« En cours » le revisionnage en cours, jusqu'au prochain épisode coché
+  dismissRewatch: (uuid: string) => req(`/series/${uuid}/rewatch/dismiss`, { method: "POST" }),
   markSeason: (uuid: string, s: number, watched: boolean) =>
     req<UnwatchResult>(`/series/${uuid}/seasons/${s}/mark?watched=${watched}`, { method: "POST" }),
   rewatchSeason: (uuid: string, s: number) =>

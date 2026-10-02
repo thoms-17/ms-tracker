@@ -76,6 +76,13 @@ class NextEpisode(BaseModel):
     air_date: str | None = None  # 'AAAA-MM-JJ' si connue
 
 
+class Rewatch(BaseModel):
+    """Revisionnage en cours : passage n°`pass_number`, `watched`/`total` épisodes revus."""
+    pass_number: int
+    watched: int
+    total: int
+
+
 class SeriesSummary(BaseModel):
     uuid: str
     title: str
@@ -87,7 +94,9 @@ class SeriesSummary(BaseModel):
     total_rewatch: int
     times_watched: int  # nb de visionnages complets (min des épisodes réguliers)
     last_watched: str | None = None
+    last_activity: str | None = None  # dernier visionnage, revisionnages compris
     next_episode: NextEpisode | None = None
+    rewatch: Rewatch | None = None
     # À jour, épisode suivant pas encore sorti (ou annoncé sans date) : hors « En cours »
     waiting: bool = False
     # Épisode suivant sorti depuis peu : remonte en tête d'« En cours » avec un badge
