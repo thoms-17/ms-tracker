@@ -6,6 +6,7 @@ import type { SeriesSummary, UpcomingItem } from "../types";
 import Confetti from "../components/Confetti";
 import Modal from "../components/Modal";
 import Spinner from "../components/Spinner";
+import { refreshAfterWatch } from "../refresh";
 import VusTab from "./VusTab";
 
 type Tab = "encours" | "vus" | "prochainement";
@@ -137,8 +138,7 @@ function SeriesCard({ s, showNext, onComplete }: {
     // pas « le prochain non vu » que choisit markNext)
     mutationFn: () => (rw && s.next_episode ? api.watchEpisode(s.next_episode.episode_id) : api.markNext(s.uuid)),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["series"] });
-      qc.invalidateQueries({ queryKey: ["history"] });
+      refreshAfterWatch(qc);
       // Ce visionnage était-il le dernier (de la série ou du passage) ? → confettis.
       if (total > 0 && vus + 1 >= total) onComplete?.();
     },
@@ -146,7 +146,7 @@ function SeriesCard({ s, showNext, onComplete }: {
   const [askDismiss, setAskDismiss] = useState(false);
   const dismiss = useMutation({
     mutationFn: () => api.dismissRewatch(s.uuid),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["series"] }),
+    onSuccess: () => refreshAfterWatch(qc),
   });
   return (
     <div className="card">

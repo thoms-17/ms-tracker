@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
+import { refreshAfterWatch } from "../refresh";
 
 /**
  * Synchro TMDB quotidienne, invisible pour l'utilisateur.
@@ -36,9 +37,7 @@ export default function AutoSync() {
   useEffect(() => {
     if (wasRunning.current && !running) {
       // Nouveaux épisodes, dates de sortie, prochains épisodes : tout peut avoir bougé.
-      ["upcoming", "series", "movies", "watchTime", "history"].forEach((k) =>
-        qc.invalidateQueries({ queryKey: [k] }),
-      );
+      refreshAfterWatch(qc);
     }
     wasRunning.current = running;
   }, [running, qc]);

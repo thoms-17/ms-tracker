@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import Modal from "../components/Modal";
+import { refreshAfterWatch } from "../refresh";
 import Spinner from "../components/Spinner";
 import WatchControl from "../components/WatchControl";
 import WatchProviders from "../components/WatchProviders";
@@ -23,8 +24,7 @@ export default function SeriesPreview() {
   const track = useMutation({
     mutationFn: (mark: { season: number; number: number; catchUp?: boolean }) => api.trackSeries(id, mark),
     onSuccess: (res) => {
-      qc.invalidateQueries({ queryKey: ["series"] });
-      qc.invalidateQueries({ queryKey: ["history"] });
+      refreshAfterWatch(qc);
       nav(`/series/${res.uuid}`);
     },
   });

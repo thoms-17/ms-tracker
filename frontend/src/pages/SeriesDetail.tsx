@@ -5,6 +5,7 @@ import { api, posterUrl, type UnwatchResult } from "../api";
 import Confetti from "../components/Confetti";
 import Modal from "../components/Modal";
 import Spinner from "../components/Spinner";
+import { refreshAfterWatch } from "../refresh";
 import { signalerEchec } from "../toast";
 import WatchControl from "../components/WatchControl";
 import WatchProviders from "../components/WatchProviders";
@@ -76,18 +77,14 @@ export default function SeriesDetail() {
 
   /** `res` : réponse de la mutation ; seuls les retraits renvoient un UnwatchResult. */
   const refresh = (res?: unknown) => {
-    qc.invalidateQueries({ queryKey: ["watchTime"] });
-    qc.invalidateQueries({ queryKey: ["history"] });
-    qc.invalidateQueries({ queryKey: ["upcoming"] });
     if (!(res as UnwatchResult | null | undefined)?.untracked) {
-      qc.invalidateQueries({ queryKey: ["series"] }); // liste + ce détail
+      refreshAfterWatch(qc);
       return;
     }
     // Plus aucun épisode vu : le serveur a retiré la série du suivi. On retourne sur
     // son aperçu TMDB (d'où l'on peut la recocher), sans relire ce détail disparu.
     const tmdbId = detail.data?.tmdb_id;
-    qc.invalidateQueries({ queryKey: ["series"], exact: true });
-    qc.invalidateQueries({ queryKey: ["search"] });
+    refreshAfterWatch(qc, ["series", uuid]);
     if (tmdbId) qc.removeQueries({ queryKey: ["tvPreview", tmdbId] }); // sinon redirige ici
     nav(tmdbId ? `/tmdb/tv/${tmdbId}` : "/", { replace: true });
     setTimeout(() => qc.removeQueries({ queryKey: ["series", uuid], exact: true }));

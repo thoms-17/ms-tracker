@@ -2,6 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import Spinner from "../components/Spinner";
+import { refreshAfterWatch } from "../refresh";
 import WatchProviders from "../components/WatchProviders";
 
 export default function MoviePreview() {
@@ -12,12 +13,7 @@ export default function MoviePreview() {
 
   const prev = useQuery({ queryKey: ["moviePreview", id], queryFn: () => api.moviePreview(id) });
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["moviePreview", id] });
-    qc.invalidateQueries({ queryKey: ["movies"] });
-    qc.invalidateQueries({ queryKey: ["watchTime"] });
-    qc.invalidateQueries({ queryKey: ["history"] });
-  };
+  const invalidate = () => refreshAfterWatch(qc);
   const add = useMutation({ mutationFn: () => api.watchMovieFromTmdb(id), onSuccess: invalidate });
   const minus = useMutation({
     mutationFn: (uuid: string) => api.removeMovieWatch(uuid),

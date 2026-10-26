@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import Historique from "../components/Historique";
 import WatchControl from "../components/WatchControl";
+import { refreshAfterWatch } from "../refresh";
 
 type Mode = "series" | "movies" | "historique";
 type Sort = "recent" | "az" | "rewatch";
@@ -106,11 +107,7 @@ function itemLink(it: Item): string | null {
 /** Bouton rond de visionnage d'un film (même composant/menu que les séries). */
 function MovieWatch({ uuid, count }: { uuid: string; count: number }) {
   const qc = useQueryClient();
-  const inv = () => {
-    qc.invalidateQueries({ queryKey: ["movies"] });
-    qc.invalidateQueries({ queryKey: ["watchTime"] });
-    qc.invalidateQueries({ queryKey: ["history"] });
-  };
+  const inv = () => refreshAfterWatch(qc);
   const add = useMutation({ mutationFn: () => api.watchMovie(uuid), onSuccess: inv });
   const removeOne = useMutation({ mutationFn: () => api.removeMovieWatch(uuid), onSuccess: inv });
   const removeAll = useMutation({ mutationFn: () => api.unwatchMovie(uuid), onSuccess: inv });
