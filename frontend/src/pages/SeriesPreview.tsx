@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
-import Modal from "../components/Modal";
+import CatchUpModal from "../components/CatchUpModal";
+import { episodeCode } from "../format";
 import { refreshAfterWatch } from "../refresh";
 import Spinner from "../components/Spinner";
 import WatchControl from "../components/WatchControl";
@@ -55,8 +56,6 @@ export default function SeriesPreview() {
     if (avant.length === 0) return track.mutate({ season, number });
     setAsk({ season, number, avant: avant.length, saisons: new Set(avant.filter((e) => e.s < season).map((e) => e.s)).size });
   };
-  const num = ask && `S${String(ask.season).padStart(2, "0")}E${String(ask.number).padStart(2, "0")}`;
-  const pluriel = (ask?.avant ?? 0) > 1;
 
   return (
     <>
@@ -87,24 +86,12 @@ export default function SeriesPreview() {
       ))}
 
       {ask && (
-        <Modal onClose={() => setAsk(null)}>
-          <h3 className="modal-title">Rattraper les épisodes précédents ?</h3>
-          <p className="muted">
-            {ask.avant} épisode{pluriel ? "s" : ""} avant {num} {pluriel ? "ne sont pas vus" : "n'est pas vu"}
-            {ask.saisons > 0 && (
-              <>, dont {ask.saisons > 1 ? `ceux de ${ask.saisons} saisons précédentes` : "ceux de la saison précédente"}</>
-            )}.
-            {" "}Veux-tu {pluriel ? "les" : "l'"} marquer comme vu{pluriel ? "s" : ""} aussi ?
-          </p>
-          <div className="modal-actions">
-            <button className="btn" onClick={() => { track.mutate({ season: ask.season, number: ask.number }); setAsk(null); }}>
-              Seulement {num}
-            </button>
-            <button className="btn primary" onClick={() => { track.mutate({ season: ask.season, number: ask.number, catchUp: true }); setAsk(null); }}>
-              Marquer les {ask.avant + 1} épisodes
-            </button>
-          </div>
-        </Modal>
+        <CatchUpModal
+          code={episodeCode(ask.season, ask.number)} before={ask.avant} seasons={ask.saisons}
+          onOnlyThis={() => track.mutate({ season: ask.season, number: ask.number })}
+          onCatchUp={() => track.mutate({ season: ask.season, number: ask.number, catchUp: true })}
+          onClose={() => setAsk(null)}
+        />
       )}
     </>
   );
@@ -126,7 +113,7 @@ function PreviewSeasonBlock({ s, open, pending, onPick }: {
       {s.episodes.map((e) => (
         <div className="ep" key={e.episode_number}>
           <span className="num">
-            S{String(s.season_number).padStart(2, "0")}E{String(e.episode_number).padStart(2, "0")}
+            {episodeCode(s.season_number, e.episode_number)}
           </span>
           <span className="ep-name">{e.name}</span>
           {/* Rien n'est encore suivi : le compteur est toujours à 0, un clic

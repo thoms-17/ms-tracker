@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import Historique from "../components/Historique";
 import WatchControl from "../components/WatchControl";
+import { monthYear } from "../format";
 import { refreshAfterWatch } from "../refresh";
 
 type Mode = "series" | "movies" | "historique";
@@ -160,9 +161,7 @@ function VusCard({ it }: { it: Item }) {
 function VusRow({ it }: { it: Item }) {
   const url = posterUrl(it.poster);
   const link = itemLink(it);
-  const dateLabel = it.date
-    ? new Date(it.date).toLocaleDateString("fr-FR", { month: "short", year: "2-digit" })
-    : "";
+  const dateLabel = monthYear(it.date);
   const title = it.title + (it.kind === "movie" && it.year ? ` (${it.year})` : "");
   const main = (
     <>

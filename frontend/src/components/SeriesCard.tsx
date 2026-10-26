@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
+import { episodeCode } from "../format";
 import { refreshAfterWatch } from "../refresh";
 import type { SeriesSummary } from "../types";
 import Modal from "./Modal";
@@ -69,8 +70,7 @@ export default function SeriesCard({ s, showNext, onComplete }: {
       <Link to={`/series/${s.uuid}`} className="title">{s.title}</Link>
       {showNext && s.next_episode && (
         <button className="btn" disabled={next.isPending} onClick={() => next.mutate()}>
-          Voir S{String(s.next_episode.season).padStart(2, "0")}E
-          {String(s.next_episode.number).padStart(2, "0")}
+          Voir {episodeCode(s.next_episode.season, s.next_episode.number)}
         </button>
       )}
     </div>

@@ -3,8 +3,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl, type UnwatchResult } from "../api";
 import Confetti from "../components/Confetti";
-import Modal from "../components/Modal";
+import CatchUpModal from "../components/CatchUpModal";
 import Spinner from "../components/Spinner";
+import { episodeCode } from "../format";
 import { refreshAfterWatch } from "../refresh";
 import { signalerEchec } from "../toast";
 import WatchControl from "../components/WatchControl";
@@ -243,13 +244,12 @@ function Episode({ uuid, e, retard, onChange }: {
     ...optimiste([id], () => 0),
   });
   const [ask, setAsk] = useState(false); // propose de rattraper les précédents
-  const num = `S${String(e.season_number).padStart(2, "0")}E${String(e.episode_number).padStart(2, "0")}`;
+  const num = episodeCode(e.season_number, e.episode_number);
 
   const onComplete = () => {
     if (retard.total > 0) setAsk(true); // des épisodes avant celui-ci ne sont pas vus
     else add.mutate();
   };
-  const pluriel = retard.total > 1;
 
   return (
     <div className={`ep${e.watched_count > 0 ? " seen" : ""}`}>
@@ -267,24 +267,11 @@ function Episode({ uuid, e, retard, onChange }: {
         onRemoveAll={() => removeAll.mutate()}
       />
       {ask && (
-        <Modal onClose={() => setAsk(false)}>
-          <h3 className="modal-title">Rattraper les épisodes précédents ?</h3>
-          <p className="muted">
-            {retard.total} épisode{pluriel ? "s" : ""} avant {num} {pluriel ? "ne sont pas vus" : "n'est pas vu"}
-            {retard.saisons > 0 && (
-              <>, dont {retard.saisons > 1 ? `ceux de ${retard.saisons} saisons précédentes` : "ceux de la saison précédente"}</>
-            )}.
-            {" "}Veux-tu {pluriel ? "les" : "l'"} marquer comme vu{pluriel ? "s" : ""} aussi ?
-          </p>
-          <div className="modal-actions">
-            <button className="btn" onClick={() => { add.mutate(); setAsk(false); }}>
-              Seulement {num}
-            </button>
-            <button className="btn primary" onClick={() => { catchUp.mutate(); setAsk(false); }}>
-              Marquer les {retard.total + 1} épisodes
-            </button>
-          </div>
-        </Modal>
+        <CatchUpModal
+          code={num} before={retard.total} seasons={retard.saisons}
+          onOnlyThis={() => add.mutate()} onCatchUp={() => catchUp.mutate()}
+          onClose={() => setAsk(false)}
+        />
       )}
     </div>
   );

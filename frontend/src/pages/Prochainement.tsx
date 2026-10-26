@@ -1,16 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import Spinner from "../components/Spinner";
+import { episodeCode, frDate } from "../format";
 import type { UpcomingItem } from "../types";
-
-/** "2026-07-25" → "sam. 25 juil. 2026" (format français, sans décalage de fuseau). */
-function frDate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(y, m - 1, d).toLocaleDateString("fr-FR", {
-    weekday: "short", day: "numeric", month: "short", year: "numeric",
-  });
-}
 
 /** Onglet « Prochainement » : sorties annoncées des séries suivies, par échéance. */
 export default function Prochainement() {
@@ -39,8 +31,7 @@ export default function Prochainement() {
                 <div className="upcoming-row" key={k}>
                   {url && <img src={url} alt="" />}
                   <div>
-                    <strong>{i.series_title}</strong> · S{String(i.season).padStart(2, "0")}E
-                    {String(i.number).padStart(2, "0")}
+                    <strong>{i.series_title}</strong> · {episodeCode(i.season, i.number)}
                     <div className="muted">{i.name}</div>
                   </div>
                   <div style={{ marginLeft: "auto", textAlign: "right" }}>
