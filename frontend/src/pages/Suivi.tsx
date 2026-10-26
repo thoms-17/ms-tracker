@@ -7,17 +7,14 @@ import Confetti from "../components/Confetti";
 import Modal from "../components/Modal";
 import Spinner from "../components/Spinner";
 import { refreshAfterWatch } from "../refresh";
+import { DEFAULT_TAB, tabFromParam, type Tab } from "../tabs";
 import VusTab from "./VusTab";
-
-type Tab = "encours" | "vus" | "prochainement";
-const TABS: Tab[] = ["encours", "vus", "prochainement"];
 
 export default function Suivi() {
   // L'onglet actif vit dans l'URL (?tab=…) pour rester synchro avec la barre du bas.
   const [params, setParams] = useSearchParams();
-  const raw = params.get("tab");
-  const tab: Tab = TABS.includes(raw as Tab) ? (raw as Tab) : "encours";
-  const setTab = (t: Tab) => setParams(t === "encours" ? {} : { tab: t });
+  const tab = tabFromParam(params.get("tab"));
+  const setTab = (t: Tab) => setParams(t === DEFAULT_TAB ? {} : { tab: t });
   const series = useQuery({ queryKey: ["series"], queryFn: api.series });
   const movies = useQuery({ queryKey: ["movies"], queryFn: api.movies });
   const watchTime = useQuery({ queryKey: ["watchTime"], queryFn: api.watchTime });
