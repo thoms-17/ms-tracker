@@ -106,7 +106,6 @@ export const api = {
   watchEpisode: (id: number) => req(`/episodes/${id}/watch`, { method: "POST" }),
   // marque l'épisode + tous les précédents non vus de la saison (façon TV Time)
   catchUpEpisode: (id: number) => req(`/episodes/${id}/catch-up`, { method: "POST" }),
-  rewatchEpisode: (id: number) => req(`/episodes/${id}/watch`, { method: "POST" }),
   // Les retraits renvoient `untracked` : plus aucun visionnage → la série a quitté le suivi.
   removeEpisodeWatch: (id: number) => req<UnwatchResult>(`/episodes/${id}/watch`, { method: "DELETE" }),
   unwatchEpisode: (id: number) => req<UnwatchResult>(`/episodes/${id}/watches`, { method: "DELETE" }),

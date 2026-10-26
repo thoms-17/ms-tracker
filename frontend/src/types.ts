@@ -124,18 +124,13 @@ export interface WatchTime {
   coverage: number;
 }
 
-export interface SyncResult {
-  checked: number;
-  series_with_new: number;
-  episodes_added: number;
-  last_sync: string | null;
-}
 
+/** État de la synchro TMDB (le serveur renvoie aussi un résumé, inutilisé depuis
+ * la suppression du bouton manuel). */
 export interface SyncStatus {
   running: boolean;
   progress: number;
   last_sync: string | null;
-  result: SyncResult | null;
 }
 
 export interface SearchItem {
