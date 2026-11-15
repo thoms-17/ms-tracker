@@ -1,0 +1,33 @@
+/* Connexion, inscription, mot de passe oublié : carte et champs. */
+.login-wrap {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+}
+.login-card {
+  position: relative;
+  width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px;
+  padding: 28px 24px; border-radius: 22px;
+  background: var(--glass-strong); border: 1px solid var(--glass-brd);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  box-shadow: 0 1px 0 var(--glass-hi) inset, var(--glass-shadow);
+}
+.login-title { margin: 0; font-size: 22px; text-align: center; }
+.login-sub { margin: 0 0 6px; color: var(--muted); font-size: 14px; text-align: center; }
+.login-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+.login-field input {
+  padding: 11px 13px; border-radius: 12px; font-size: 16px; /* 16px : pas de zoom iOS */
+  background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text);
+}
+.login-field input:focus { outline: none; border-color: rgba(57, 135, 229, 0.6); }
+.login-error {
+  margin: 0; font-size: 13px; color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1); border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: 10px; padding: 8px 10px;
+}
+.login-submit { margin-top: 4px; padding: 12px; font-size: 15px; border-radius: 12px; }
+.link-btn {
+  margin-top: 10px; background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 13px; text-align: center; width: 100%;
+}
+.link-btn:hover { color: var(--text); text-decoration: underline; }

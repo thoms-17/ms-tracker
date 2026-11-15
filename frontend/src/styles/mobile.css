@@ -1,0 +1,153 @@
+/* Mobile (≤ 640px) : adaptations de tous les écrans, et barre de navigation du bas. */
+@media (max-width: 640px) {
+  /* La barre de navigation flotte par-dessus le contenu : sans cette réserve, un
+     défilement automatique peut poser un épisode dessous — il reçoit alors le tap
+     à la place du bouton visé. */
+  html { scroll-padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 100px); }
+
+  header {
+    gap: 12px;
+    padding: 12px max(14px, env(safe-area-inset-right)) 12px max(14px, env(safe-area-inset-left));
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  header h1 { font-size: 16px; }
+
+  main {
+    /* réserve la place de la barre flottante en bas */
+    padding: 16px max(14px, env(safe-area-inset-right))
+      calc(96px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  }
+
+  /* Tuiles de stats : 2 colonnes plutôt qu'une seule très large */
+  .stats { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+  .stat { padding: 12px 14px; }
+  .stat .value { font-size: 17px; }
+  .stat.total .value { font-size: 19px; }
+
+  /* En-tête de détail : affiche plus compacte, texte à côté */
+  .detail-head { gap: 14px; margin: 12px 0; }
+  .detail-poster { width: 112px; }
+  .detail-meta { min-width: 160px; }
+
+  /* Grille d'affiches : plus de cartes par ligne sur petit écran */
+  .grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 12px; }
+  .grid.movies { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+  .card .title { font-size: 13px; }
+
+  /* Les onglets du haut sont remplacés par la barre du bas sur mobile */
+  .tabs { display: none; }
+
+  /* Barre de navigation flottante — liquid glass façon iOS 26 : une capsule
+     d'onglets + une loupe ronde détachée, flottant au-dessus du contenu. */
+  .bottom-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+    z-index: 50;
+    width: max-content;
+    max-width: calc(100vw - 24px);
+  }
+  .bn-bar {
+    position: relative;
+    display: flex;
+    padding: 5px;
+    border-radius: 999px;
+    touch-action: none; /* le glissé horizontal change d'onglet, sans défiler la page */
+    user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .bn-search {
+    position: relative;
+    width: 62px; height: 62px; /* = hauteur de la capsule d'onglets */
+    flex: none;
+    display: grid; place-items: center;
+    padding: 0; border: none; border-radius: 50%;
+    color: var(--text); cursor: pointer;
+    transition: transform .45s var(--lg-spring);
+  }
+  .bn-search svg { width: 24px; height: 24px; }
+  .bn-search:active { transform: scale(1.1); }
+
+  .bn-item {
+    position: relative; z-index: 1; /* au-dessus de la bulle */
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    height: 52px; padding: 0 14px; border-radius: 999px;
+    color: var(--text); font-size: 10.5px; font-weight: 600; line-height: 1;
+    transition: color .25s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bn-item svg { width: 22px; height: 22px; }
+  .bn-item.active { color: var(--lg-tint); }
+
+  /* Bulle de sélection : glisse d'un onglet à l'autre avec un ressort, suit le doigt
+     pendant un glissé et grossit comme une loupe tant qu'on appuie. */
+  .bn-bubble {
+    position: absolute; top: 5px; bottom: 5px; left: 0;
+    opacity: 0;
+    transition:
+      transform .55s var(--lg-spring),
+      width .55s var(--lg-spring),
+      opacity .2s ease;
+    pointer-events: none;
+  }
+  .bn-bubble.visible { opacity: 1; }
+  .bn-bar.dragging .bn-bubble { transition: transform .1s linear, width .3s var(--lg-spring); }
+  .bn-bubble-body {
+    display: block; height: 100%; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.13);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.3),
+      inset 0 -1px 1px rgba(255, 255, 255, 0.08),
+      0 2px 10px rgba(0, 0, 0, 0.25);
+    animation: lg-stretch .55s var(--lg-spring);
+    transition: transform .4s var(--lg-spring), background .2s ease;
+  }
+  .bn-bar.pressed .bn-bubble-body {
+    transform: scale(1.14, 1.2);
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  /* Les messages passent au-dessus de la barre de navigation flottante */
+  /* Les messages passent au-dessus de la barre de navigation flottante */
+  .toasts { bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); }
+
+  /* Recherche : pas de champ dans le header ; on y accède par la loupe de la barre du bas */
+  .searchbox { display: none; }
+
+  /* Overlay porté sur <body> : au-dessus du header (z:10) et de la barre du bas (z:50) */
+  .search-overlay { position: fixed; inset: 0; z-index: 100; }
+  .search-scrim {
+    display: block; position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  }
+  .search-panel.expanded {
+    display: block; position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+  }
+  /* 16px min. : empêche l'auto-zoom d'iOS Safari au focus du champ */
+  .search-panel.expanded input { box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); font-size: 16px; }
+
+  /* Header compact : on garde l'avatar, on masque le nom */
+  .usermenu-name { display: none; }
+  .usermenu-btn { padding: 5px; }
+
+  /*
+   * iOS zoome sur un champ dont la police < 16px au focus.
+   * On force 16px sur mobile pour l'éviter.
+   */
+  .searchbox > input,
+  .vus-search,
+  .ep select,
+  select { font-size: 16px; }
+
+  /* Cibles tactiles un peu plus généreuses */
+  .tabs button { padding: 12px 14px; }
+  .segmented button { padding: 9px 14px; }
+}

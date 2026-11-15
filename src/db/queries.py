@@ -175,19 +175,6 @@ def episode_id_of(user_id: int, series_uuid: str, season: int, number: int) -> i
     return row[0] if row else None
 
 
-def runtime_coverage(user_id: int) -> dict:
-    """Combien de titres/épisodes de l'utilisateur ont déjà une durée connue."""
-    with connect() as conn:
-        ep_total, ep_known = conn.execute(
-            "SELECT COUNT(*), COUNT(e.runtime) FROM episodes e "
-            "JOIN series s ON s.series_uuid = e.series_uuid WHERE s.user_id=?", (user_id,)
-        ).fetchone()
-        mv_total, mv_known = conn.execute(
-            "SELECT COUNT(*), COUNT(runtime) FROM movies WHERE user_id=?", (user_id,)
-        ).fetchone()
-    return {"ep_total": ep_total, "ep_known": ep_known, "mv_total": mv_total, "mv_known": mv_known}
-
-
 def get_meta(user_id: int, key: str) -> str | None:
     with connect() as conn:
         row = conn.execute("SELECT value FROM meta WHERE user_id=? AND key=?", (user_id, key)).fetchone()

@@ -1,0 +1,23 @@
+/* Onglet « En cours » : sections repliables, pastille « Nouvel épisode ». */
+/* Sections de l'onglet « En cours » (la seconde est repliable) */
+.section-title { margin: 4px 0 14px; font-size: 17px; font-weight: 700; }
+.section-fold { margin-top: 28px; }
+.section-fold > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+.section-fold > summary::-webkit-details-marker { display: none; }
+.section-fold > summary::before {
+  content: "›"; display: inline-block; width: 1em; text-align: center;
+  color: var(--muted); font-size: 22px; line-height: 1; transition: transform .2s ease;
+}
+.section-fold[open] > summary::before { transform: rotate(90deg); }
+
+/* Épisode sorti depuis peu (onglet « En cours ») */
+.new-badge {
+  position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px);
+  padding: 4px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap;
+  background: rgba(57, 135, 229, 0.88);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 4px 12px rgba(0, 0, 0, 0.4);
+}

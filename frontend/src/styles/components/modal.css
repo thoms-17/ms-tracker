@@ -1,0 +1,17 @@
+/* Boîte de dialogue centrée (ex. proposition de rattrapage des épisodes) */
+.modal-layer {
+  position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+}
+.modal {
+  width: 100%; max-width: 380px; padding: 20px;
+  background: var(--glass-strong); border: 1px solid var(--glass-brd); border-radius: 18px;
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  box-shadow: var(--glass-shadow);
+  animation: menu-in .12s ease;
+}
+.modal-title { margin: 0 0 8px; font-size: 17px; }
+.modal-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.modal-actions .btn { flex: 1; min-width: 130px; text-align: center; }

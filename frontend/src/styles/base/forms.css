@@ -1,0 +1,6 @@
+/* Champs de formulaire génériques. */
+.ep select, select {
+  background: var(--glass); color: var(--text); border: 1px solid var(--glass-brd);
+  border-radius: 999px; padding: 7px 12px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}

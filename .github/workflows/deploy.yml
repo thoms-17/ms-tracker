@@ -2,7 +2,7 @@ name: Déploiement
 
 on:
   push:
-    branches: [prod]
+    tags: ["v*"]            # publier une version = pousser un tag vX.Y.Z
   workflow_dispatch: # ajoute un bouton « Run workflow » dans l'onglet Actions
 
 concurrency: deploy # jamais deux déploiements en même temps
@@ -14,6 +14,8 @@ jobs:
       SERVER: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0    # historique et tags : le build du front lit sa version dans le dernier tag
 
       # 1. On ne déploie que si les tests passent
       - uses: actions/setup-python@v6
@@ -40,7 +42,7 @@ jobs:
       # 4. Met à jour le code et les dépendances sur AlwaysData
       - name: Mettre à jour le code
         run: |
-          ssh $SERVER 'cd ~/ms-tracker && git pull --ff-only origin prod && .venv/bin/pip install -q -r requirements-prod.txt'
+          ssh $SERVER "cd ~/ms-tracker && git fetch --tags origin && git merge --ff-only $GITHUB_SHA && .venv/bin/pip install -q -r requirements-prod.txt"
 
       # 5. Envoie le front buildé
       - name: Envoyer le front

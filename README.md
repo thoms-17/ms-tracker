@@ -1,45 +1,30 @@
-# 📺 TV Time Analytics
+# 📺 MS Tracker
 
-Application de suivi et d'analyse de tes données de visionnage TV Time (séries + films).
+Application de suivi de séries et de films, façon TV Time : ce que tu regardes, où tu en es,
+ce qui sort bientôt. Multi-utilisateur, sur invitation.
 
-**Architecture** (mono-utilisateur, local) : back **FastAPI** + front **React (Vite + TypeScript)**,
-posés sur un cœur métier Python (SQLite, client TMDB, ML) réutilisable.
-Le suivi façon TV Time est en React ; les statistiques/ML seront rebranchées ensuite.
-
-## Lancement
-
-```bash
-make install     # dépendances back (venv) + front (npm)
-make dev         # lance API (:8000) + front (:5173) ensemble
-```
-
-Puis ouvre **http://localhost:5173** (doc API auto sur http://localhost:8000/docs).
-Autres cibles : `make api`, `make front`, `make build`. Clé TMDB : variable `TMDB_API_KEY`
-dans `.env` (cf. `.env.example`).
+**Architecture** : back **FastAPI** + front **React (Vite + TypeScript)**, posés sur un cœur
+métier Python (SQLite, client TMDB). En production, un seul processus sert l'API et le front.
 
 ## Fonctionnalités
 
-- **Suivi** (comme TV Time) — grille de **cartes avec affiches** (TMDB) ; l'affiche est
-  cliquable et ouvre le détail d'une série (progression, épisodes saison par saison, cases
-  vu/non-vu, revisionnages illimités, marquage de saison). Chaque carte affiche le prochain
-  épisode à voir (`▶ S..E..`) et permet de le cocher directement. **Recherche TMDB** intégrée :
-  cherche n'importe quelle série même non suivie, affiche son détail en aperçu, puis
-  « Commencer le suivi » la matérialise dans ta base (aucune écriture avant ce clic).
-  Trois onglets : « En cours », « Vus » et **« Prochainement »** (calendrier des prochains
-  épisodes par échéance). Un bouton **🔄 Rafraîchir les épisodes** (par série) et le bouton
-  **« Vérifier les nouveautés »** (global, dans Prochainement) ajoutent via TMDB les épisodes
-  des nouvelles saisons diffusées, avec un garde-fou : ignoré si la numérotation TV Time diverge
-  de TMDB, pour ne jamais injecter d'épisodes erronés.
-- **Accueil** — chiffres clés, activité mensuelle, top séries, films par décennie.
-- **Habitudes** — heatmap jour × heure, rythmes horaires/hebdomadaires, détection de binges.
-- **Séries & Films** — taux de complétion, revisionnages, statuts, tableaux détaillés.
-- **Prédictif** :
-  - 📈 *Prévision de volume* — épisodes/films à venir (Holt-Winters).
-  - ⚠️ *Risque d'abandon* — RandomForest scorant les séries à risque (validation croisée).
-  - 🧩 *Profils de séries* — clustering KMeans + projection PCA.
-- **Enrichissement TMDB** — genres, durées, temps de visionnage estimé (clé API requise).
+- **En cours** — cartes des séries commencées, avec le prochain épisode à cocher en un clic ;
+  les séries à jour qui attendent une sortie passent dans « Prochainement ».
+- **Détail d'une série** — épisodes saison par saison, revisionnages illimités, rattrapage des
+  épisodes précédents, actions sur une saison entière, revisionnage en cours.
+- **Vus** — séries terminées, films et historique des derniers visionnages.
+- **Prochainement** — calendrier des prochains épisodes. Une synchro TMDB quotidienne,
+  automatique, ajoute les nouveaux épisodes (ignorée si la numérotation héritée de TV Time
+  diverge de TMDB, pour ne jamais injecter d'épisodes erronés).
+- **Recherche TMDB** — n'importe quelle série ou film, en aperçu avant de l'ajouter au suivi ;
+  plateformes de visionnage en France.
+- **Temps de visionnage** — total séries, films et global.
+- **Comptes** — connexion par cookie de session, inscription sur invitation avec vérification
+  d'email, mot de passe oublié.
 
-Toutes les analyses lisent la même base : marquer un épisode met à jour les stats en direct.
+**À venir : statistiques avancées.** Les modules d'analyse (`src/loader.py`, `src/models/`,
+`src/enrich/library.py` : prévisions, risque d'abandon, profils de séries) sont conservés
+comme base technique mais ne sont branchés sur aucun écran pour l'instant.
 
 ## Architecture des données
 
@@ -71,9 +56,9 @@ make test             # tests du back (base SQLite jetable, aucun appel réseau)
 
 Voir **[DEPLOY.md](DEPLOY.md)** pour la mise en production (AlwaysData) et le workflow des branches.
 
-## Notes méthodologiques
+## Notes sur les modules d'analyse (non branchés)
 
-- **Import groupé** : TV Time attribue le même `watched_at` à des centaines d'épisodes
+- **Import groupé** : TV Time attribuait le même `watched_at` à des centaines d'épisodes
   lors du premier import. Ces lignes sont marquées (`is_bulk_import`) et exclues des
   analyses de rythme temporel pour ne pas fausser les tendances.
 - **Modèles** : ML classique (scikit-learn, statsmodels), choisi pour sa robustesse et son
@@ -94,6 +79,7 @@ api/                 # Back FastAPI (uvicorn api.main:app)
 frontend/            # Front React + TypeScript (Vite)
   src/api.ts         #   client typé de l'API
   src/watch.ts       #   mutation de visionnage optimiste (partagée par tous les boutons)
+  src/styles/        #   styles par thème (base · components · pages · mobile), importés par index.css
   src/pages/         #   Suivi, SeriesDetail, SeriesPreview, MoviePreview
   src/components/    #   SearchBar (recherche à la frappe)
 src/                 # Cœur métier (aucune dépendance framework UI)
@@ -103,7 +89,7 @@ src/                 # Cœur métier (aucune dépendance framework UI)
   enrich/            #   client TMDB : client · api · library
   models/            #   ML : forecast · completion · clustering (exposés via l'API à venir)
 tests/               # tests du back (pytest) : mutations, listes, comptes, synchro
-Makefile             # make dev / api / front / install / build / test
+Makefile             # make dev / api / front / install / build / test / release
 data/tvtime.db       # base (générée au 1er lancement, WAL)
 data/cache/          # cache TMDB (généré)
 ```

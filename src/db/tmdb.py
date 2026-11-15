@@ -13,7 +13,7 @@ import uuid as uuidlib
 from .. import enrich
 from .connection import connect, now
 from .mutations import set_meta
-from .queries import image_coverage, runtime_coverage
+from .queries import image_coverage
 
 
 def add_series_from_tmdb(user_id: int, tmdb_id: int, title: str, seasons: list[dict],
@@ -222,55 +222,6 @@ def sync_updates(user_id: int, key: str, progress=None) -> dict:
 
     set_meta(user_id, "last_sync", dt.datetime.now().isoformat())
     return {"checked": len(rows), "series_with_new": len(to_refresh), "episodes_added": added}
-
-
-def sync_runtimes(user_id: int, key: str, progress=None) -> dict:
-    """Remplit les durées manquantes via TMDB (films + épisodes) de l'utilisateur. Idempotent.
-    `progress` : callback(fraction, libellé)."""
-    with connect() as conn:
-        movies = conn.execute(
-            "SELECT uuid, title, imdb_id, tvdb_id, tmdb_id FROM movies WHERE runtime IS NULL AND user_id=?",
-            (user_id,),
-        ).fetchall()
-        series = conn.execute(
-            "SELECT series_uuid, title, imdb_id, tvdb_id, tmdb_id FROM series WHERE user_id=? AND series_uuid IN "
-            "(SELECT DISTINCT series_uuid FROM episodes WHERE runtime IS NULL)",
-            (user_id,),
-        ).fetchall()
-        total = max(len(movies) + len(series), 1)
-        done = 0
-
-        for uuid, title, imdb, tvdb, tmdb in movies:
-            mid = tmdb or enrich.resolve_tmdb_id(imdb, tvdb, "movie", key)
-            if mid:
-                runtime = enrich.fetch_movie_runtime(mid, key)
-                conn.execute("UPDATE movies SET runtime=?, tmdb_id=? WHERE uuid=?", (runtime, mid, uuid))
-                conn.commit()
-            done += 1
-            if progress:
-                progress(done / total, f"Film — {title}")
-
-        for su, title, imdb, tvdb, tmdb in series:
-            sid = tmdb or enrich.resolve_tmdb_id(imdb, tvdb, "tv", key)
-            if sid:
-                mapping = enrich.fetch_tv_episode_runtimes(sid, key)
-                conn.execute("UPDATE series SET tmdb_id=? WHERE series_uuid=?", (sid, su))
-                conn.executemany(
-                    "UPDATE episodes SET runtime=? WHERE series_uuid=? AND season_number=? AND episode_number=?",
-                    [(rt, su, sn, en) for (sn, en), rt in mapping.items() if rt],
-                )
-                # Numérotation TV Time ≠ TMDB (ex. One Piece par arcs) : on comble les épisodes
-                # non appariés avec la durée médiane de la série plutôt qu'un défaut global.
-                vals = sorted(v for v in mapping.values() if v)
-                if vals:
-                    conn.execute("UPDATE episodes SET runtime=? WHERE series_uuid=? AND runtime IS NULL",
-                                 (vals[len(vals) // 2], su))
-                conn.commit()
-            done += 1
-            if progress:
-                progress(done / total, f"Série — {title}")
-
-    return runtime_coverage(user_id)
 
 
 def sync_images(user_id: int, key: str, progress=None) -> dict:

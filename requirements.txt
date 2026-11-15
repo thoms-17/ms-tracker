@@ -1,7 +1,6 @@
 # API (FastAPI)
 fastapi>=0.110
 uvicorn[standard]>=0.29
-python-multipart>=0.0.9   # upload de fichiers (import TV Time)
 
 # Cœur métier : base, TMDB ; pandas/numpy pour l'analyse hors-ligne (pas pour l'API)
 pandas>=2.2

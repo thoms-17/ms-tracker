@@ -7,10 +7,9 @@
 
 fastapi>=0.110
 uvicorn[standard]>=0.29
-python-multipart>=0.0.9   # upload de fichiers (import TV Time)
 
 requests>=2.32
-httpx>=0.27
+httpx>=0.27              # client HTTP des tests (TestClient), lancés avec ces dépendances en CI
 
 argon2-cffi>=23.1         # mots de passe
 python-dotenv>=1.0        # lecture du fichier .env (config prod)

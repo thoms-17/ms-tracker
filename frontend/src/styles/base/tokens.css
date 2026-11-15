@@ -1,0 +1,23 @@
+/* Variables : couleurs, matériau « liquid glass », courbes d'animation. */
+:root {
+  --bg: #0d0d0d;
+  --surface: #1a1a19;
+  --border: #2c2c2a;
+  --text: #f2f2ef;
+  --muted: #a3a29b;
+  --accent: #3987e5;
+  --good: #1baf7a;
+
+  /* Liquid glass : panneaux translucides floutés */
+  --glass: rgba(28, 30, 36, 0.55);
+  --glass-strong: rgba(32, 34, 40, 0.72);
+  --glass-brd: rgba(255, 255, 255, 0.14);
+  --glass-hi: rgba(255, 255, 255, 0.08); /* reflet interne haut */
+  --glass-blur: 18px;
+  --glass-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  /* Liquid glass « iOS 26 » (barre du bas) : plus transparent, bord lumineux */
+  --lg-tint: #6cb0ff;
+  --lg-spring: cubic-bezier(.34, 1.4, .64, 1);
+
+  color-scheme: dark;
+}

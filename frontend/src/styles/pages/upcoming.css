@@ -1,0 +1,6 @@
+/* Onglet « Prochainement » : une ligne par sortie à venir. */
+.upcoming-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+/* même précaution : ligne en flex → l'affiche ne doit ni s'étirer ni s'écraser */
+.upcoming-row img {
+  width: 48px; aspect-ratio: 2 / 3; object-fit: cover; flex-shrink: 0; border-radius: 4px;
+}

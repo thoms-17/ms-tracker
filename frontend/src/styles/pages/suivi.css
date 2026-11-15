@@ -1,0 +1,41 @@
+/* Accueil : tuiles de temps, onglets, grille d'affiches. */
+/* Compteurs de temps (tuiles) */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 4px 0 24px;
+}
+.stat {
+  border: 1px solid var(--glass-brd); border-radius: 16px; padding: 14px 16px;
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  box-shadow: 0 1px 0 var(--glass-hi) inset, var(--glass-shadow);
+}
+.stat .label { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; }
+.stat .value {
+  font-size: 19px; font-weight: 700; margin-top: 8px; line-height: 1.25;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+}
+.stat.total {
+  border-color: rgba(57, 135, 229, 0.5);
+  background: linear-gradient(160deg, rgba(57, 135, 229, 0.30), rgba(28, 30, 36, 0.55));
+  box-shadow: 0 1px 0 var(--glass-hi) inset, 0 8px 30px rgba(57, 135, 229, 0.22);
+}
+.stat.total .value { color: var(--accent); font-size: 22px; }
+
+.tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--glass-brd); }
+.tabs button {
+  background: none; border: none; color: var(--muted);
+  padding: 10px 14px; font-size: 15px; cursor: pointer; border-bottom: 2px solid transparent;
+}
+.tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+}
+/* Films : cartes plus grandes (titres longs sans décalage) */
+.grid.movies { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 18px; }

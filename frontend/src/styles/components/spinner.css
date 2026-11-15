@@ -1,0 +1,18 @@
+/* Chargement : écran d'attente et indicateur rotatif. */
+.app-loading {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  color: var(--muted);
+}
+/* Chargement en cours de page (sections, listes, détails) */
+.loading-block { display: flex; align-items: center; justify-content: center; padding: 40px 0; }
+.spinner {
+  border-radius: 50%; flex-shrink: 0;
+  border: 3px solid var(--glass-brd);
+  border-top-color: var(--text);
+  animation: spinner-rotate 0.8s linear infinite;
+}
+@keyframes spinner-rotate { to { transform: rotate(360deg); } }
+/* Mouvement réduit : on ralentit sans supprimer (l'animation porte l'information) */
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2.4s; }
+}

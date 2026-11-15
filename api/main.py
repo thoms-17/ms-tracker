@@ -32,25 +32,31 @@ from .routers import auth, discover, stats, tracking, upcoming
 _ROOT = Path(__file__).resolve().parent.parent
 
 
-def _read_version() -> str:
-    """Numéro lisible, partagé avec le front (source unique : /VERSION)."""
+def _git(*args: str) -> str | None:
+    """Sortie d'une commande git lancée à la racine du projet, ou None si elle échoue
+    (dépôt absent, git indisponible, aucun tag…)."""
     try:
-        return (_ROOT / "VERSION").read_text(encoding="utf-8").strip()
-    except OSError:
-        return "inconnu"
+        import subprocess
+        out = subprocess.run(["git", *args], cwd=_ROOT, capture_output=True, text=True,
+                             timeout=2, check=True)
+        return out.stdout.strip() or None
+    except Exception:
+        return None
+
+
+def _read_version() -> str:
+    """Numéro lisible = dernier tag git `vX.Y.Z` atteint par le code en cours d'exécution.
+
+    Publier une version, c'est poser un tag (cf. DEPLOY.md) : il n'y a pas de fichier
+    à tenir à jour. Le front lit le même tag au moment de son build.
+    """
+    tag = _git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*")
+    return tag.removeprefix("v") if tag else "dev"
 
 
 def _read_git_sha() -> str:
-    """Commit réellement déployé — dit la vérité même si le VERSION n'a pas bougé."""
-    try:
-        import subprocess
-        out = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            cwd=_ROOT, capture_output=True, text=True, timeout=2, check=True,
-        )
-        return out.stdout.strip()
-    except Exception:
-        return "inconnu"  # dépôt absent (archive) ou git indisponible
+    """Commit réellement déployé — dit la vérité même si aucun tag n'a été posé."""
+    return _git("rev-parse", "--short", "HEAD") or "inconnu"
 
 
 # Lus une seule fois au démarrage : ils ne changent pas tant que le process vit.
@@ -63,6 +69,7 @@ GIT_SHA = _read_git_sha()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()  # crée/migre la base au démarrage
+    db.purge_expired_sessions()  # sinon les sessions expirées s'accumulent indéfiniment
     yield
 
 

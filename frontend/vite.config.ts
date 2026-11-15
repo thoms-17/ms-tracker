@@ -1,22 +1,23 @@
 import { execSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 // --- Identité de la version, figée au moment du build -------------------------
-// Le numéro lisible vient de /VERSION (source unique, partagée avec le back) ;
-// le SHA et la date disent la vérité sur ce qui est réellement déployé.
+// Le numéro lisible est le dernier tag git `vX.Y.Z` (même source que le back : publier
+// une version, c'est poser un tag) ; le SHA et la date disent la vérité sur ce qui
+// est réellement déployé.
 const root = resolve(__dirname, "..");
-const version = readFileSync(resolve(root, "VERSION"), "utf-8").trim();
-const gitSha = (() => {
+const git = (args: string): string | null => {
   try {
-    return execSync("git rev-parse --short HEAD", { cwd: root }).toString().trim();
+    return execSync(`git ${args}`, { cwd: root, stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || null;
   } catch {
-    return "inconnu"; // build hors dépôt git
+    return null; // build hors dépôt git, ou aucun tag (clone superficiel de la CI)
   }
-})();
+};
+const version = git('describe --tags --abbrev=0 --match "v[0-9]*"')?.replace(/^v/, "") ?? "dev";
+const gitSha = git("rev-parse --short HEAD") ?? "inconnu";
 
 // Le proxy renvoie /api vers le back FastAPI en dev → même origine, pas de CORS.
 export default defineConfig({

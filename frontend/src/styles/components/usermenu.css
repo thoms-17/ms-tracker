@@ -1,0 +1,44 @@
+/* Menu profil dans le header */
+/* margin-left:auto → toujours collé à droite, même quand la barre de recherche
+   est masquée (mobile) : sans ça, le popover ancré à droite déborde hors écran. */
+.usermenu { position: relative; flex-shrink: 0; margin-left: auto; }
+.usermenu-btn {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text);
+  border-radius: 999px; padding: 5px 12px 5px 5px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.usermenu-btn:hover { border-color: rgba(255, 255, 255, 0.3); }
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: #fff;
+  background: linear-gradient(160deg, rgba(57, 135, 229, 0.95), rgba(57, 135, 229, 0.6));
+}
+.usermenu-name { font-size: 14px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.usermenu-pop {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; min-width: 200px;
+  /* garde-fou : ne peut jamais être plus large que l'écran */
+  max-width: calc(100vw - 28px);
+  padding: 6px; display: flex; flex-direction: column; gap: 2px;
+  /* Quasi opaque, contrairement aux autres panneaux : les tuiles de stats
+     placées dessous transparaissaient et gênaient la lecture. */
+  background: rgba(20, 22, 27, 0.985);
+  border: 1px solid var(--glass-brd); border-radius: 16px;
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  box-shadow: var(--glass-shadow);
+}
+.usermenu-head { padding: 8px 12px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.usermenu-head strong { color: var(--text); font-size: 14px; }
+.menu-backdrop { position: fixed; inset: 0; z-index: 20; }
+
+/* Version de l'app, en pied du menu profil */
+.version-info {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 8px 12px 4px; margin-top: 2px;
+  border-top: 1px solid var(--glass-brd);
+  font-size: 11px; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.version-warn { color: #ffb454; }

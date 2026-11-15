@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 VENV := ./.venv/bin
 
-.PHONY: dev api front install build test
+.PHONY: dev api front install build test release
 
 ## dev : lance le back (FastAPI :8000) et le front (Vite :5173) ensemble
 dev:
@@ -31,3 +31,13 @@ test:
 ## build : build de production du front
 build:
 	cd frontend && npm run build
+
+## release : publie develop en prod sous le numéro V (ex. make release V=1.9.1)
+release:
+	@test -n "$(V)" || { echo "Usage : make release V=1.9.1"; exit 1; }
+	@test -z "$$(git status --porcelain)" || { echo "Des modifications ne sont pas commitées."; exit 1; }
+	git switch prod
+	git merge --no-edit develop
+	git tag v$(V)
+	git push origin prod v$(V)
+	git switch develop

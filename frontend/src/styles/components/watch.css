@@ -1,0 +1,42 @@
+/* Bouton rond de visionnage */
+.watch-btn {
+  flex-shrink: 0; margin-left: auto;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--glass-brd); background: var(--glass);
+  color: var(--muted); font-size: 14px; font-weight: 700;
+  font-variant-numeric: tabular-nums; line-height: 1; cursor: pointer;
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  box-shadow: 0 1px 0 var(--glass-hi) inset;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  touch-action: manipulation;
+  transition: transform .12s ease, background .2s ease, box-shadow .2s ease, color .2s ease;
+}
+.watch-btn:active { transform: scale(0.9); }
+.watch-btn.on {
+  color: #fff;
+  background: linear-gradient(160deg, rgba(57, 135, 229, 0.95), rgba(57, 135, 229, 0.62));
+  border-color: rgba(120, 180, 255, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 4px 16px rgba(57, 135, 229, 0.4);
+}
+.season-actions { display: flex; align-items: center; }
+
+/* Menu popover (façon TV Time), rendu dans un portail sur <body> */
+.menu-layer { position: fixed; inset: 0; z-index: 100; }
+.watch-menu {
+  position: fixed; min-width: 210px; padding: 6px;
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--glass-strong); border: 1px solid var(--glass-brd); border-radius: 16px;
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  box-shadow: var(--glass-shadow);
+  animation: menu-in .12s ease;
+}
+@keyframes menu-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.menu-item {
+  text-align: left; background: none; border: none; color: var(--text);
+  padding: 11px 13px; border-radius: 11px; font-size: 15px; cursor: pointer; white-space: nowrap;
+}
+.menu-item:hover { background: rgba(255, 255, 255, 0.08); }
+.menu-item.danger { color: #ff6b6b; }

@@ -1,0 +1,20 @@
+/* Barre de progression et boutons. */
+.bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--accent); }
+
+button.btn {
+  background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text);
+  border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  box-shadow: 0 1px 0 var(--glass-hi) inset;
+  transition: border-color .15s ease, background .15s ease, transform .1s ease;
+}
+button.btn:hover { border-color: rgba(255, 255, 255, 0.3); }
+button.btn:active { transform: scale(0.96); }
+button.btn.primary {
+  background: linear-gradient(160deg, rgba(57, 135, 229, 0.95), rgba(57, 135, 229, 0.7));
+  border-color: rgba(120, 180, 255, 0.55); color: #fff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 4px 14px rgba(57, 135, 229, 0.35);
+}
+button.btn:disabled { opacity: .5; cursor: default; }

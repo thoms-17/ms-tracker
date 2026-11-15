@@ -1,0 +1,51 @@
+/* Vitrine publique (non connecté) : en-tête, accroche, tendances. */
+.landing-header {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px max(20px, env(safe-area-inset-right)) 14px max(20px, env(safe-area-inset-left));
+  padding-top: max(14px, env(safe-area-inset-top));
+  background: var(--glass); border-bottom: 1px solid var(--glass-brd);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+}
+.landing-logo { font-size: 18px; font-weight: 700; }
+.landing-main {
+  max-width: 1200px; margin: 0 auto;
+  padding: 8px max(16px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+}
+.landing-hero { padding: 28px 4px 12px; }
+.landing-hero h1 { margin: 0 0 8px; font-size: clamp(24px, 6vw, 38px); line-height: 1.1; }
+.landing-hero p { margin: 0; max-width: 560px; }
+
+.trending-section { margin-top: 22px; }
+.trending-title { font-size: 17px; margin: 0 0 12px; }
+.trending-row {
+  display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px;
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+}
+.trending-row::-webkit-scrollbar { height: 6px; }
+.trending-row::-webkit-scrollbar-thumb { background: var(--glass-brd); border-radius: 3px; }
+.trending-card {
+  flex: 0 0 auto; width: 150px; scroll-snap-align: start;
+  display: flex; flex-direction: column; gap: 6px;
+  background: none; border: none; padding: 0; cursor: pointer; text-align: left; color: inherit;
+}
+.trending-poster {
+  width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 12px;
+  border: 1px solid var(--glass-brd); box-shadow: var(--glass-shadow);
+  background: var(--glass); transition: transform .15s ease;
+}
+.trending-card:hover .trending-poster { transform: translateY(-3px); }
+.trending-poster.ph { display: block; }
+.trending-name {
+  font-size: 13px; font-weight: 600; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.trending-year { font-size: 12px; color: var(--muted); }
+
+@media (max-width: 640px) {
+  .trending-card { width: 120px; }
+  .landing-header { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+}

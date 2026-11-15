@@ -26,11 +26,8 @@ Aucun secret dans git.
 git switch develop
 # … commits …
 
-# Publier une version en prod
-git switch prod
-git merge develop
-git push origin prod       # déclenche le déploiement automatique (voir § 5)
-git switch develop
+# Publier une version en prod (fusion dans prod + tag vX.Y.Z + push)
+make release V=1.9.1       # le tag déclenche le déploiement automatique (voir § 5)
 ```
 
 Règles : jamais de commit direct sur `prod` (uniquement des merges depuis `develop`) ;
@@ -90,17 +87,20 @@ git push origin prod
 
 ## 5. Redéployer une mise à jour (automatique)
 
-Un push sur `prod` suffit : GitHub Actions s'occupe du reste, en moins d'une minute.
+`make release V=X.Y.Z` suffit : la commande fusionne `develop` dans `prod`, pose le tag
+`vX.Y.Z` et pousse les deux. Le tag déclenche GitHub Actions, qui s'occupe du reste en
+moins d'une minute.
 
 | Fichier | Déclencheur | Rôle |
 |---|---|---|
 | `.github/workflows/ci.yml` | push sur `develop`, pull request | tests du back (`pytest`), types et build du front |
-| `.github/workflows/deploy.yml` | push sur `prod` (ou bouton *Run workflow*) | déploiement |
+| `.github/workflows/deploy.yml` | push d'un tag `v*` (ou bouton *Run workflow*) | déploiement |
 
 Étapes du déploiement, dans l'ordre — la première qui échoue arrête tout :
 
 1. tests du back, puis build du front (sur la machine de GitHub : pas de build sur le serveur) ;
-2. `git pull --ff-only origin prod` et `pip install -r requirements-prod.txt` sur AlwaysData, en SSH ;
+2. sur AlwaysData, en SSH : récupération des tags, avance du code jusqu'au commit tagué
+   (`git merge --ff-only`), puis `pip install -r requirements-prod.txt` ;
 3. envoi de `frontend/dist/` par `rsync` ;
 4. redémarrage du site par l'API d'AlwaysData ;
 5. contrôle : `/api/version` doit renvoyer le commit qui vient d'être poussé.
@@ -133,28 +133,30 @@ jour le secret correspondant.
 cd frontend && npm ci && npm run build && cd ..
 rsync -az --delete frontend/dist/ <compte>@ssh-<compte>.alwaysdata.net:tvtime/frontend/dist/
 # sur le serveur
-cd ~/tvtime && git pull --ff-only origin prod && .venv/bin/pip install -r requirements-prod.txt
+cd ~/tvtime && git fetch --tags origin && git merge --ff-only vX.Y.Z && .venv/bin/pip install -r requirements-prod.txt
 # puis « Redémarrer » le site depuis l'admin AlwaysData
 ```
 
 ## 5 bis. Numéro de version
 
-Le numéro lisible vit dans **`/VERSION`** à la racine (format `MAJEUR.MINEUR.CORRECTIF`),
-source unique lue par le front **et** le back. Pour publier une version : édite ce
-fichier, commit, puis déploie.
+Le numéro lisible (`MAJEUR.MINEUR.CORRECTIF`) est le **dernier tag git `vX.Y.Z`** : il n'y a
+aucun fichier à modifier. Publier une version, c'est poser un tag — ce que fait
+`make release V=X.Y.Z`. Sans tag (clone tout neuf, CI), l'app affiche `dev`.
 
-Front et back exposent leur identité séparément — c'est volontaire :
+Front et back lisent ce tag séparément — c'est volontaire :
 
 | | Origine | Figé quand ? |
 |---|---|---|
-| Front | constantes injectées par Vite (`define`) | au **build** (`npm run build`) |
-| Back | `/VERSION` + `git rev-parse HEAD` | au **démarrage** d'uvicorn |
+| Front | `git describe` + `git rev-parse`, injectés par Vite (`define`) | au **build** |
+| Back | `git describe` + `git rev-parse` | au **démarrage** d'uvicorn |
 
 Le menu profil affiche `vX.Y.Z · <sha> · <date>`. Si le commit du serveur diffère de
 celui du front, un avertissement orange apparaît : signe qu'une des deux moitiés n'a
-pas été mise à jour — le plus souvent **uvicorn non redémarré** après un `git pull`.
+pas été mise à jour. Le déploiement automatique contrôle ce point à sa dernière étape.
 
 Vérification directe : `curl https://<app>.alwaysdata.net/api/version`
+
+Lister les versions publiées : `git tag -l "v*"` (ou l'onglet *Tags* du dépôt GitHub).
 
 ## 6. Sauvegardes
 

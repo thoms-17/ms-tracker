@@ -130,32 +130,6 @@ def fetch_tv_meta(tmdb_id: int, key: str) -> dict:
     }
 
 
-def fetch_tv_episode_runtimes(tmdb_id: int, key: str) -> dict[tuple[int, int], int]:
-    """Durée par épisode d'une série. Clé : (season_number, episode_number) → minutes."""
-    det = details(key, tmdb_id, "tv")
-    if not det:
-        return {}
-    fallback = (det.get("episode_run_time") or [None])[0]
-    out: dict[tuple[int, int], int] = {}
-    for s in det.get("seasons", []):
-        sn = s.get("season_number")
-        if sn is None:
-            continue
-        try:
-            r = requests.get(f"{BASE}/tv/{tmdb_id}/season/{sn}", params={"api_key": key}, timeout=10)
-            if r.status_code != 200:
-                continue
-            for e in r.json().get("episodes", []):
-                en = e.get("episode_number")
-                if en is None:
-                    continue
-                out[(sn, en)] = e.get("runtime") or fallback
-        except requests.RequestException:
-            continue
-        time.sleep(0.03)
-    return out
-
-
 def fetch_movie_meta(tmdb_id: int, key: str) -> dict:
     det = details(key, tmdb_id, "movie") or {}
     date = det.get("release_date") or ""
@@ -165,11 +139,6 @@ def fetch_movie_meta(tmdb_id: int, key: str) -> dict:
         "runtime": det.get("runtime"),
         "poster_path": det.get("poster_path"),
     }
-
-
-def fetch_movie_runtime(tmdb_id: int, key: str) -> int | None:
-    det = details(key, tmdb_id, "movie")
-    return det.get("runtime") if det else None
 
 
 def fetch_poster(tmdb_id: int, media: str, key: str) -> str | None:

@@ -1,0 +1,12 @@
+/* Plateformes de visionnage (JustWatch via TMDB) */
+.providers { margin-top: 16px; }
+.prov-head { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.prov-logos { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.prov-logo { width: 42px; height: 42px; border-radius: 9px; object-fit: cover; }
+.prov-name {
+  font-size: 13px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 4px 8px;
+}
+.prov-rentbuy { margin-top: 8px; }
+.prov-rentbuy > summary { cursor: pointer; font-size: 13px; margin-bottom: 8px; }
+.prov-jw { display: inline-block; margin-top: 8px; font-size: 12px; }

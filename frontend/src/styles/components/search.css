@@ -1,0 +1,30 @@
+/* Barre de recherche (le .search-panel est aussi rendu dans l'overlay mobile, hors .searchbox) */
+.searchbox { position: relative; flex: 1; max-width: 480px; display: flex; }
+.search-scrim { display: none; } /* voile derrière le panneau mobile */
+.search-panel { position: relative; flex: 1; }
+.search-panel input {
+  width: 100%; padding: 10px 14px; border-radius: 999px;
+  background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text); font-size: 14px;
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+}
+.search-panel input:focus { outline: none; border-color: rgba(57, 135, 229, 0.6); }
+.search-panel .results {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 20;
+  background: var(--glass-strong); border: 1px solid var(--glass-brd); border-radius: 14px; overflow: hidden;
+  max-height: 60vh; overflow-y: auto;
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  box-shadow: var(--glass-shadow);
+}
+.search-panel .res {
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; font-size: 14px;
+}
+.search-panel .res:hover { background: rgba(255,255,255,0.05); }
+.search-panel .res img { width: 32px; height: 48px; object-fit: cover; border-radius: 3px; }
+.search-panel .res .thumb { width: 32px; text-align: center; }
+.search-panel .res-title { flex: 1; }
+.search-panel .tag {
+  font-size: 11px; color: var(--good); border: 1px solid var(--good);
+  border-radius: 10px; padding: 1px 8px; white-space: nowrap;
+}

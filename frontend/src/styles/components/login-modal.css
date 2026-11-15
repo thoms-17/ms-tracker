@@ -1,0 +1,15 @@
+/* Modale (connexion depuis la vitrine) */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  animation: menu-in .14s ease;
+}
+.modal-close {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; color: var(--muted); font-size: 24px; line-height: 1;
+  cursor: pointer; padding: 4px;
+}
+.modal-close:hover { color: var(--text); }

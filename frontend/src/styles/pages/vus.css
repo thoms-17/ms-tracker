@@ -1,0 +1,36 @@
+/* Onglet « Vus » : contrôles, segments, filtre, vue en liste. */
+/* Onglet Vus : contrôles, segments, liste */
+.vus-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 18px; }
+.segmented {
+  display: inline-flex; border: 1px solid var(--glass-brd); border-radius: 999px; overflow: hidden;
+  background: var(--glass);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+}
+.segmented button {
+  background: none; border: none; color: var(--muted);
+  padding: 7px 14px; font-size: 14px; cursor: pointer;
+}
+.segmented button + button { border-left: 1px solid var(--glass-brd); }
+.segmented button.active {
+  background: linear-gradient(160deg, rgba(57, 135, 229, 0.95), rgba(57, 135, 229, 0.7)); color: #fff;
+}
+.vus-search { flex: 1; min-width: 140px; max-width: 260px; padding: 8px 14px; border-radius: 999px;
+  background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text); font-size: 14px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.badge-rewatch {
+  font-size: 12px; color: var(--good); border: 1px solid var(--good);
+  border-radius: 10px; padding: 0 8px; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+
+.list { display: flex; flex-direction: column; }
+.list-row {
+  display: flex; align-items: center; gap: 12px; padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.list-row:hover { background: rgba(255,255,255,0.03); }
+.list-row .row-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.list-row .thumb { width: 34px; height: 51px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.list-row .thumb.ph { display: flex; align-items: center; justify-content: center; background: var(--surface); border: 1px solid var(--border); }
+.list-row .row-title { flex: 1; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-row .row-date { color: var(--muted); font-size: 13px; white-space: nowrap; min-width: 64px; text-align: right; }
