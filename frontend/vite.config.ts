@@ -56,7 +56,7 @@ export default defineConfig({
     }),
   ],
   server: {
-    host: true, // écoute sur le réseau local → accessible depuis ton téléphone
+    // pas de `host` : Vite n'écoute que sur localhost, invisible du réseau local
     port: 5173,
     proxy: {
       "/api": "http://localhost:8000",
