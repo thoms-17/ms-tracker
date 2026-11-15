@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, Route, Routes } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "./api";
@@ -21,7 +21,6 @@ import MoviePreview from "./pages/MoviePreview";
 
 export default function App() {
   const qc = useQueryClient();
-  const [searchOpen, setSearchOpen] = useState(false); // overlay de recherche (loupe mobile)
   const me = useQuery({
     queryKey: ["me"],
     queryFn: api.me,
@@ -68,7 +67,7 @@ export default function App() {
     <>
       <header>
         <Link to="/"><h1>MS Tracker</h1></Link>
-        <SearchBar expanded={searchOpen} setExpanded={setSearchOpen} />
+        <SearchBar />
         <UserMenu username={me.data.username} />
       </header>
       <main>
@@ -79,7 +78,7 @@ export default function App() {
           <Route path="/tmdb/movie/:tmdbId" element={<MoviePreview />} />
         </Routes>
       </main>
-      <BottomNav onSearch={() => setSearchOpen(true)} />
+      <BottomNav />
       <Toast />
       <AutoSync />
     </>

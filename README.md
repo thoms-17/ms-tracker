@@ -23,6 +23,11 @@ métier Python (SQLite, client TMDB). En production, un seul processus sert l'AP
   diverge de TMDB, pour ne jamais injecter d'épisodes erronés).
 - **Recherche TMDB** — n'importe quelle série ou film, en aperçu avant de l'ajouter au suivi ;
   plateformes de visionnage en France.
+- **Découvrir** — suggestions « Pour toi » et tendances de la semaine (onglet sur ordinateur,
+  loupe sur mobile). Les suggestions viennent d'un profil de goût appris sur tes visionnages
+  (genres, thèmes, acteurs, créateurs ; terminé et revu en positif, abandonné ou « pas
+  intéressé » en négatif), appliqué aux titres que TMDB rapproche de tes préférés. Elles sont
+  recalculées chaque jour par la synchro (`src/reco.py`).
 - **Temps de visionnage** — total séries, films et global.
 - **Comptes** — connexion par cookie de session, inscription sur invitation avec vérification
   d'email, mot de passe oublié.
@@ -76,7 +81,8 @@ frontend/            # Front React + TypeScript (Vite)
   src/components/    #   SearchBar (recherche à la frappe)
 src/                 # Cœur métier (aucune dépendance framework UI)
   stats.py           #   temps de visionnage et statistiques de l'onglet Stats
-  db/                #   base SQLite : connection · schema · queries · mutations · tmdb
+  reco.py            #   recommandations : profil de goût, candidats TMDB, classement
+  db/                #   base SQLite : connection · schema · queries · mutations · tmdb · reco
   enrich/            #   client TMDB : client · api · genres
 tests/               # tests du back (pytest) : mutations, listes, comptes, synchro
 Makefile             # make dev / api / front / install / build / test / release

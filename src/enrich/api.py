@@ -206,3 +206,58 @@ def resolve_tmdb_id(imdb_id, tvdb_id, media: str, key: str) -> int | None:
     if not found and tvdb_id:
         found = find_by_external(key, str(tvdb_id), "tvdb_id", media)
     return found["id"] if found else None
+
+
+# Mots-clés TMDB qui décrivent la forme d'une œuvre, pas son contenu : ils ne disent
+# rien d'un goût et rapprocheraient à tort des titres sans rapport.
+_NOISE_KEYWORDS = {
+    "aftercreditsstinger", "duringcreditsstinger", "sequel", "prequel", "remake", "reboot",
+    "spin off", "miniseries", "anthology", "woman director", "live action remake",
+}
+
+
+def fetch_features(media: str, tmdb_id: int, key: str) -> dict | None:
+    """Caractéristiques d'un titre pour les recommandations : identifiants TMDB de ses
+    genres, mots-clés, acteurs principaux et créateurs. None si TMDB ne répond pas."""
+    try:
+        r = requests.get(f"{BASE}/{media}/{tmdb_id}",
+                         params={"api_key": key, "append_to_response": "keywords,credits"}, timeout=10)
+        if r.status_code != 200:
+            return None
+        det = r.json()
+    except requests.RequestException:
+        return None
+    keywords = det.get("keywords") or {}
+    keywords = keywords.get("results") or keywords.get("keywords") or []  # séries / films
+    credits = det.get("credits") or {}
+    crew = [c for c in credits.get("crew", []) if c.get("job") == "Director"] + (det.get("created_by") or [])
+    return {
+        "genre": _genre_ids(det),
+        "keyword": [k["id"] for k in keywords if k.get("name") not in _NOISE_KEYWORDS][:20],
+        "cast": [c["id"] for c in credits.get("cast", [])[:5]],
+        "crew": [c["id"] for c in crew[:3]],
+    }
+
+
+def fetch_recommendations(media: str, tmdb_id: int, key: str) -> list[dict]:
+    """Titres que TMDB rapproche de celui-ci (même type), normalisés. Liste vide en cas d'échec."""
+    try:
+        r = requests.get(f"{BASE}/{media}/{tmdb_id}/recommendations",
+                         params={"api_key": key, "language": "fr-FR"}, timeout=10)
+        if r.status_code != 200:
+            return []
+    except requests.RequestException:
+        return []
+    out = []
+    for res in r.json().get("results", []):
+        date = res.get("first_air_date") or res.get("release_date") or ""
+        out.append({
+            "tmdb_id": res.get("id"),
+            "title": res.get("name") or res.get("title"),
+            "year": date[:4] or None,
+            "overview": (res.get("overview") or "")[:180],
+            "poster_path": res.get("poster_path"),
+            "vote_average": res.get("vote_average") or 0,
+            "vote_count": res.get("vote_count") or 0,
+        })
+    return out

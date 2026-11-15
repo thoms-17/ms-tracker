@@ -5,7 +5,7 @@ import datetime as dt
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 
-from src import db, enrich
+from src import db, enrich, reco
 
 from .. import deps
 from ..schemas import SyncResult, UpcomingItem
@@ -39,14 +39,18 @@ def _do_sync(user_id: int, key: str):
     """Enrichissement complet d'un utilisateur :
     1) affiches + résolution des tmdb_id (indispensable à la suite) ;
     2) prochains épisodes / nouveautés, genres des séries (nécessite les tmdb_id) ;
-    3) genres des films qui n'en ont pas encore (statistiques).
+    3) genres des films qui n'en ont pas encore (statistiques) ;
+    4) recommandations « Pour toi ».
     """
     job = _job_for(user_id)
     try:
-        db.sync_images(user_id, key, progress=lambda f, t: job.update(progress=f * 0.3))
-        res = db.sync_updates(user_id, key, progress=lambda f, t: job.update(progress=0.3 + f * 0.4))
+        db.sync_images(user_id, key, progress=lambda f, t: job.update(progress=f * 0.25))
+        res = db.sync_updates(user_id, key, progress=lambda f, t: job.update(progress=0.25 + f * 0.35))
         job["result"] = res
-        db.sync_genres(user_id, key, progress=lambda f, t: job.update(progress=0.7 + f * 0.3))
+        db.sync_genres(user_id, key, progress=lambda f, t: job.update(progress=0.6 + f * 0.2))
+        job.update(progress=0.8)
+        reco.refresh(user_id, key)
+        db.set_meta(user_id, "last_reco", dt.datetime.now().isoformat())
     finally:
         job.update(running=False, progress=1.0)
 
@@ -83,8 +87,11 @@ def auto_sync(background: BackgroundTasks, user_id: int = Uid):
     job = _job_for(user_id)
     if job["running"]:
         return {"running": True}
-    if not (_older_than(db.get_meta(user_id, "last_sync"), AUTO_SYNC_EVERY)
-            and _older_than(db.get_meta(user_id, "last_sync_attempt"), AUTO_SYNC_RETRY)):
+    # Jamais de suggestions calculées (compte neuf, ou première ouverture après la mise
+    # à jour qui les a introduites) : on n'attend pas l'échéance quotidienne.
+    due = (_older_than(db.get_meta(user_id, "last_sync"), AUTO_SYNC_EVERY)
+           or db.get_meta(user_id, "last_reco") is None)
+    if not (due and _older_than(db.get_meta(user_id, "last_sync_attempt"), AUTO_SYNC_RETRY)):
         return {"running": False}
     db.set_meta(user_id, "last_sync_attempt", dt.datetime.now().isoformat())
     return {"running": start_sync_job(background, user_id)}

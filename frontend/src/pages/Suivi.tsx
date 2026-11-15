@@ -7,6 +7,7 @@ import SeriesCard from "../components/SeriesCard";
 import Spinner from "../components/Spinner";
 import { enCours } from "../enCours";
 import { DEFAULT_TAB, tabFromParam, type Tab } from "../tabs";
+import Discover from "./Discover";
 import Prochainement from "./Prochainement";
 import Stats from "./Stats";
 import VusTab from "./VusTab";
@@ -42,7 +43,7 @@ export default function Suivi() {
   return (
     <>
       {confetti && <Confetti />}
-      {watchTime.data && (
+      {watchTime.data && tab !== "decouvrir" && (
         <div className="stats">
           <div className="stat">
             <div className="label">Séries</div>
@@ -72,6 +73,9 @@ export default function Suivi() {
         <button className={tab === "stats" ? "active" : ""} onClick={() => setTab("stats")}>
           Stats
         </button>
+        <button className={tab === "decouvrir" ? "active" : ""} onClick={() => setTab("decouvrir")}>
+          Découvrir
+        </button>
       </div>
 
       {tab === "encours" && (
@@ -100,6 +104,8 @@ export default function Suivi() {
       {tab === "prochainement" && <Prochainement />}
 
       {tab === "stats" && <Stats />}
+
+      {tab === "decouvrir" && <Discover />}
     </>
   );
 }

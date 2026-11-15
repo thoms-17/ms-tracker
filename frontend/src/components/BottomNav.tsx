@@ -9,8 +9,9 @@ const ICONS: Record<Tab, () => JSX.Element> = {
   vus: CheckIcon,
   prochainement: CalendarIcon,
   stats: ChartIcon,
+  decouvrir: SearchIcon,
 };
-const NAV = TABS.map((t) => ({ ...t, icon: ICONS[t.key] }));
+const NAV = TABS.filter((t) => t.bottomNav !== false).map((t) => ({ ...t, icon: ICONS[t.key] }));
 
 /** Seuil (px) au-delà duquel un appui sur la barre devient un glissé. */
 const DRAG_THRESHOLD = 6;
@@ -19,8 +20,9 @@ const DRAG_THRESHOLD = 6;
  * Barre de navigation flottante (mobile) — liquid glass façon iOS 26, présente sur
  * toutes les pages. Une bulle de verre unique glisse d'un onglet à l'autre (ressort
  * CSS) ; on peut aussi faire glisser le doigt le long de la barre pour changer d'onglet.
+ * La loupe, détachée de la capsule, mène à l'onglet « Découvrir ».
  */
-export default function BottomNav({ onSearch }: { onSearch: () => void }) {
+export default function BottomNav() {
   const [params] = useSearchParams();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -138,9 +140,16 @@ export default function BottomNav({ onSearch }: { onSearch: () => void }) {
           </Link>
         ))}
       </div>
-      <button type="button" className="bn-search lg" onClick={onSearch} aria-label="Rechercher">
+      {/* La loupe est un onglet à part entière : « Découvrir », avec la recherche */}
+      <Link
+        to={tabHref("decouvrir")}
+        className={`bn-search lg${onHome && tab === "decouvrir" ? " active" : ""}`}
+        aria-label="Découvrir et rechercher"
+        aria-current={onHome && tab === "decouvrir" ? "page" : undefined}
+        draggable={false}
+      >
         <SearchIcon />
-      </button>
+      </Link>
     </nav>
   );
 }

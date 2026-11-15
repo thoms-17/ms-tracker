@@ -218,3 +218,19 @@ export interface Stats {
   top_series: StatsTitle[];
   top_movies: StatsTitle[];
 }
+
+/** Suggestion « Pour toi » ; `because` : titres de l'utilisateur qui l'ont inspirée. */
+export interface Recommendation {
+  media_type: "tv" | "movie";
+  tmdb_id: number;
+  title: string | null;
+  year: string | null;
+  poster_path: string | null;
+  overview: string | null;
+  because: string[];
+}
+
+export interface Recommendations {
+  tv: Recommendation[];
+  movie: Recommendation[];
+}

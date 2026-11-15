@@ -2,11 +2,12 @@ import type { QueryClient, QueryKey } from "@tanstack/react-query";
 
 /**
  * Données qui dépendent des visionnages : listes, détails, statistiques, historique,
- * sorties à venir, recherche et aperçus TMDB (qui disent si un titre est suivi).
+ * sorties à venir, suggestions, recherche et aperçus TMDB (qui disent si un titre est suivi).
  * Chaque clé couvre aussi ses sous-clés (["series"] → liste ET détails).
  */
 const WATCH_DERIVED = new Set([
-  "series", "movies", "watchTime", "stats", "history", "upcoming", "search", "tvPreview", "moviePreview",
+  "series", "movies", "watchTime", "stats", "history", "upcoming", "recommendations",
+  "search", "tvPreview", "moviePreview",
 ]);
 
 /**

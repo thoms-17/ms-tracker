@@ -106,6 +106,34 @@ CREATE TABLE IF NOT EXISTS meta (
     value   TEXT,
     PRIMARY KEY (user_id, key)
 );
+CREATE TABLE IF NOT EXISTS tmdb_features (
+    media      TEXT NOT NULL,              -- 'tv' | 'movie'
+    tmdb_id    INTEGER NOT NULL,
+    features   TEXT NOT NULL,              -- JSON : genres, mots-clés, acteurs, créateurs (identifiants TMDB)
+    fetched_at TEXT,
+    PRIMARY KEY (media, tmdb_id)           -- cache partagé : ce n'est pas une donnée d'utilisateur
+);
+CREATE TABLE IF NOT EXISTS recommendations (
+    user_id     INTEGER NOT NULL,
+    media       TEXT NOT NULL,
+    tmdb_id     INTEGER NOT NULL,
+    rank        INTEGER NOT NULL,          -- 0 = meilleure suggestion
+    title       TEXT,
+    year        TEXT,
+    poster_path TEXT,
+    overview    TEXT,
+    because     TEXT,                      -- JSON : titres de l'utilisateur qui ont inspiré la suggestion
+    PRIMARY KEY (user_id, media, tmdb_id),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS dismissed_recos (
+    user_id    INTEGER NOT NULL,
+    media      TEXT NOT NULL,
+    tmdb_id    INTEGER NOT NULL,
+    created_at TEXT,
+    PRIMARY KEY (user_id, media, tmdb_id),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 CREATE INDEX IF NOT EXISTS idx_watch_ep ON watches(episode_id);
 CREATE INDEX IF NOT EXISTS idx_watch_mv ON watches(movie_uuid);
 CREATE INDEX IF NOT EXISTS idx_ep_series ON episodes(series_uuid);

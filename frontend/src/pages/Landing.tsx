@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, posterUrl } from "../api";
-import type { TrendingItem } from "../types";
+import { api } from "../api";
 import Spinner from "../components/Spinner";
+import TitleRow from "../components/TitleRow";
+import type { TrendingItem } from "../types";
 import Login from "./Login";
+
+const rangee = (items: TrendingItem[]) => items.map((t) => ({ ...t, key: `${t.media_type}-${t.tmdb_id}` }));
+const invite = (t: TrendingItem) =>
+  `${t.title ?? ""}${t.year ? ` (${t.year})` : ""} — connecte-toi pour suivre`;
 
 /** Vitrine publique (non connecté) : séries & films en vogue + accès à la connexion. */
 export default function Landing() {
@@ -35,45 +40,15 @@ export default function Landing() {
         )}
         {trending.data && (
           <>
-            <TrendingRow title="Séries en vogue" items={trending.data.tv}
-              onPick={() => setShowLogin(true)} />
-            <TrendingRow title="Films en vogue" items={trending.data.movie}
-              onPick={() => setShowLogin(true)} />
+            <TitleRow title="Séries en vogue" items={rangee(trending.data.tv)}
+              onPick={() => setShowLogin(true)} hint={invite} />
+            <TitleRow title="Films en vogue" items={rangee(trending.data.movie)}
+              onPick={() => setShowLogin(true)} hint={invite} />
           </>
         )}
       </main>
 
       {showLogin && <Login onClose={() => setShowLogin(false)} />}
     </div>
-  );
-}
-
-function TrendingRow({ title, items, onPick }: {
-  title: string; items: TrendingItem[]; onPick: () => void;
-}) {
-  if (!items.length) return null;
-  return (
-    <section className="trending-section">
-      <h2 className="trending-title">{title}</h2>
-      <div className="trending-row">
-        {items.map((it) => (
-          <button
-            key={`${it.media_type}-${it.tmdb_id}`}
-            className="trending-card"
-            onClick={onPick}
-            title={`${it.title ?? ""}${it.year ? ` (${it.year})` : ""} — connecte-toi pour suivre`}
-          >
-            {it.poster_path ? (
-              <img className="trending-poster" src={posterUrl(it.poster_path, true) ?? ""}
-                alt={it.title ?? ""} loading="lazy" />
-            ) : (
-              <div className="trending-poster ph" />
-            )}
-            <span className="trending-name">{it.title}</span>
-            {it.year && <span className="trending-year">{it.year}</span>}
-          </button>
-        ))}
-      </div>
-    </section>
   );
 }

@@ -300,3 +300,18 @@ class Stats(BaseModel):
     titles_watched: int          # …sur ce total
     top_series: list[StatsTitle]  # par temps passé
     top_movies: list[StatsTitle]  # films revus, par nombre de visionnages
+
+
+class Recommendation(BaseModel):
+    media_type: str                # 'tv' | 'movie'
+    tmdb_id: int
+    title: str | None = None
+    year: str | None = None
+    poster_path: str | None = None
+    overview: str | None = None
+    because: list[str] = []        # titres de l'utilisateur qui ont inspiré la suggestion
+
+
+class Recommendations(BaseModel):
+    tv: list[Recommendation]
+    movie: list[Recommendation]

@@ -27,6 +27,9 @@ from .queries import (episode_id_of, get_meta, get_user_id, get_username,
                       overview, recent_watches,
                       series_uuid_by_tmdb, titles, tracked_episodes, tracked_series,
                       upcoming_episodes, watch_log, watch_minutes, watched_movies)
+from .reco import (cached_features, dismiss_recommendation, dismissed_keys,
+                   library_keys, recommendations, replace_recommendations,
+                   save_features)
 from .schema import get_or_create_user, init_db
 from .tmdb import (add_movie_from_tmdb, add_series_from_tmdb,
                    refresh_series_from_tmdb, sync_genres, sync_images,
@@ -44,6 +47,9 @@ __all__ = [
     "add_movie_watch", "remove_last_movie_watch", "set_movie_unwatched",
     "add_series_from_tmdb", "add_movie_from_tmdb", "refresh_series_from_tmdb",
     "sync_images", "sync_updates", "sync_genres",
+    # recommandations
+    "library_keys", "cached_features", "save_features", "dismissed_keys",
+    "dismiss_recommendation", "replace_recommendations", "recommendations",
     # auth
     "verify_credentials", "set_password", "create_session", "delete_session",
     "delete_user_sessions", "user_id_for_session", "purge_expired_sessions",

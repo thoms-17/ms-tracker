@@ -1,6 +1,6 @@
-/* Barre de recherche (le .search-panel est aussi rendu dans l'overlay mobile, hors .searchbox) */
+/* Barre de recherche : dans le header (.searchbox) ou ancrée en bas sur mobile (.search-dock) */
 .searchbox { position: relative; flex: 1; max-width: 480px; display: flex; }
-.search-scrim { display: none; } /* voile derrière le panneau mobile */
+.search-dock { display: none; } /* mobile uniquement (affichée dans le @media) */
 .search-panel { position: relative; flex: 1; }
 .search-panel input {
   width: 100%; padding: 10px 14px; border-radius: 999px;

@@ -26,10 +26,12 @@
 }
 .trending-row::-webkit-scrollbar { height: 6px; }
 .trending-row::-webkit-scrollbar-thumb { background: var(--glass-brd); border-radius: 3px; }
-.trending-card {
-  flex: 0 0 auto; width: 150px; scroll-snap-align: start;
-  display: flex; flex-direction: column; gap: 6px;
+.trending-card { position: relative; flex: 0 0 auto; width: 150px; scroll-snap-align: start; }
+/* zone cliquable d'une affiche (le bouton × éventuel est posé par-dessus, à côté) */
+.trending-pick {
+  width: 100%; display: flex; flex-direction: column; gap: 6px;
   background: none; border: none; padding: 0; cursor: pointer; text-align: left; color: inherit;
+  font: inherit;
 }
 .trending-poster {
   width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 12px;

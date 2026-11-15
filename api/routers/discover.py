@@ -1,6 +1,7 @@
 """Découverte : tendances (public), recherche TMDB, aperçu et matérialisation de titres."""
 from __future__ import annotations
 
+import json
 import time
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,7 +10,8 @@ from src import db
 from src import enrich
 
 from .. import deps
-from ..schemas import (PreviewEpisode, PreviewSeason, SearchItem, TmdbMoviePreview,
+from ..schemas import (PreviewEpisode, PreviewSeason, Recommendation, Recommendations,
+                       SearchItem, TmdbMoviePreview,
                        TmdbSeriesPreview, TrackRequest, Trending, TrendingItem,
                        UuidResponse, WatchProviders)
 
@@ -125,3 +127,22 @@ def watch_movie_from_tmdb(tmdb_id: int, user_id: int = Uid):
                                   genre_ids=meta.get("genre_ids"))
     db.add_movie_watch(user_id, uuid)
     return UuidResponse(uuid=uuid)
+
+
+@router.get("/recommendations", response_model=Recommendations)
+def recommendations(user_id: int = Uid):
+    """Suggestions « Pour toi », recalculées chaque jour par la synchro (voir src/reco.py)."""
+    out: dict[str, list[Recommendation]] = {"tv": [], "movie": []}
+    for r in db.recommendations(user_id):
+        out[r["media"]].append(Recommendation(
+            media_type=r["media"], tmdb_id=r["tmdb_id"], title=r["title"], year=r["year"],
+            poster_path=r["poster_path"], overview=r["overview"], because=json.loads(r["because"] or "[]")))
+    return Recommendations(**out)
+
+
+@router.post("/recommendations/{media}/{tmdb_id}/dismiss", status_code=204)
+def dismiss_recommendation(media: str, tmdb_id: int, user_id: int = Uid):
+    """« Pas intéressé » : retire la suggestion, et le prochain calcul en tiendra compte."""
+    if media not in ("tv", "movie"):
+        raise HTTPException(400, "media doit être 'tv' ou 'movie'")
+    db.dismiss_recommendation(user_id, media, tmdb_id)

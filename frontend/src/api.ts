@@ -1,6 +1,7 @@
 import type {
   HistoryItem,
   MovieItem,
+  Recommendations,
   SearchItem,
   SeriesDetail,
   SeriesSummary,
@@ -125,6 +126,11 @@ export const api = {
   watchMovie: (uuid: string) => req(`/movies/${uuid}/watch`, { method: "POST" }),
   removeMovieWatch: (uuid: string) => req(`/movies/${uuid}/watch`, { method: "DELETE" }),
   unwatchMovie: (uuid: string) => req(`/movies/${uuid}/watches`, { method: "DELETE" }),
+
+  // suggestions « Pour toi » (recalculées chaque jour par la synchro)
+  recommendations: () => req<Recommendations>("/recommendations"),
+  dismissRecommendation: (media: "tv" | "movie", tmdbId: number) =>
+    req(`/recommendations/${media}/${tmdbId}/dismiss`, { method: "POST" }),
 
   // découverte TMDB
   search: (q: string) => req<SearchItem[]>(`/search?q=${encodeURIComponent(q)}`),

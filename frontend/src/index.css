@@ -45,6 +45,7 @@
 @import "./styles/components/providers.css";
 @import "./styles/components/bottom-nav.css";
 @import "./styles/components/empty-state.css";
+@import "./styles/components/discover.css";
 
 /* Chargement, connexion, profil */
 @import "./styles/components/spinner.css";
