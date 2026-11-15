@@ -229,13 +229,10 @@ def remove_last_movie_watch(user_id: int, movie_uuid: str) -> None:
         "SELECT id FROM watches WHERE movie_uuid=? ORDER BY watched_at DESC, id DESC LIMIT 1",
         (movie_uuid,),
     ).fetchone()
-    untracked = False
     if row:
         conn.execute("DELETE FROM watches WHERE id=?", (row[0],))
-        untracked = _untrack_if_unwatched(conn, _series_of_episode(conn, episode_id))
         conn.commit()
     conn.close()
-    return untracked
 
 
 def set_movie_unwatched(user_id: int, movie_uuid: str) -> None:

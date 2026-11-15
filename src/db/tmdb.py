@@ -170,8 +170,11 @@ def refresh_air_dates(conn, series_uuid: str, tmdb_id: int, tmdb_seasons: list[i
     ).fetchone()[0]
     if last is None:
         return
-    for sn in sorted(s for s in tmdb_seasons if s >= last):
-        eps = enrich.fetch_season_episodes(tmdb_id, sn, key)
+    # Tous les appels TMDB d'abord, les écritures ensuite : une écriture ouvre une
+    # transaction, qui verrouillerait la base pendant les appels réseau suivants.
+    fetched = [(sn, enrich.fetch_season_episodes(tmdb_id, sn, key))
+               for sn in sorted(s for s in tmdb_seasons if s >= last)]
+    for sn, eps in fetched:
         if eps:
             _store_air_dates(conn, series_uuid, sn, eps)
 
@@ -193,23 +196,27 @@ def sync_updates(user_id: int, key: str, progress=None) -> dict:
     for i, (su, tmdb_id) in enumerate(rows):
         upd = enrich.fetch_series_updates(tmdb_id, key)
         ne = upd.get("next_episode_to_air") or {}
+        # Série encore en diffusion : dates de sortie de la saison en cours, pour
+        # masquer d'« En cours » une série à jour dont l'épisode suivant n'est pas sorti.
+        if upd.get("status") in LIVE_STATUSES or ne:
+            refresh_air_dates(conn, su, tmdb_id, upd.get("seasons") or [], key)
         conn.execute(
             "UPDATE series SET tmdb_status=?, next_air_date=?, next_ep_season=?, next_ep_number=?, next_ep_name=? "
             "WHERE series_uuid=?",
             (upd.get("status"), ne.get("air_date"), ne.get("season_number"),
              ne.get("episode_number"), ne.get("name"), su),
         )
-        # Série encore en diffusion : dates de sortie de la saison en cours, pour
-        # masquer d'« En cours » une série à jour dont l'épisode suivant n'est pas sorti.
-        if upd.get("status") in LIVE_STATUSES or ne:
-            refresh_air_dates(conn, su, tmdb_id, upd.get("seasons") or [], key)
+        # Un commit par série : SQLite n'accepte qu'un écrivain à la fois, et une
+        # transaction gardée ouverte pendant toute la passe ferait échouer les
+        # visionnages cochés entre-temps (« database is locked »).
+        conn.commit()
         local_reg = conn.execute(
             "SELECT COUNT(*) FROM episodes WHERE series_uuid=? AND season_number>=1", (su,)).fetchone()[0]
         if (upd.get("number_of_episodes") or 0) > local_reg:
             to_refresh.append(su)
         if progress:
             progress((i + 1) / total, f"{i + 1}/{len(rows)}")
-    conn.commit(); conn.close()
+    conn.close()
 
     added = 0
     for su in to_refresh:  # refresh_series_from_tmdb ouvre sa propre connexion → hors de la boucle ci-dessus
@@ -293,18 +300,19 @@ def sync_images(user_id: int, key: str, progress=None) -> dict:
         path = enrich.fetch_poster(sid, "tv", key) if sid else None
         conn.execute("UPDATE series SET poster_path=?, tmdb_id=COALESCE(tmdb_id,?) WHERE series_uuid=?",
                      (path or "", sid, su))
+        conn.commit()  # par titre : ne pas garder la base verrouillée pendant l'appel TMDB suivant
         done += 1
         if progress:
             progress(done / total, title)
-    conn.commit()
 
     for uuid, title, imdb, tvdb, tmdb in movies:
         mid = tmdb or enrich.resolve_tmdb_id(imdb, tvdb, "movie", key)
         path = enrich.fetch_poster(mid, "movie", key) if mid else None
         conn.execute("UPDATE movies SET poster_path=?, tmdb_id=COALESCE(tmdb_id,?) WHERE uuid=?",
                      (path or "", mid, uuid))
+        conn.commit()
         done += 1
         if progress:
             progress(done / total, title)
-    conn.commit(); conn.close()
+    conn.close()
     return image_coverage(user_id)
