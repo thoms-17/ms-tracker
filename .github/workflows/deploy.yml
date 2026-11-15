@@ -3,9 +3,9 @@ name: Déploiement
 on:
   push:
     branches: [prod]
-  workflow_dispatch:        # ajoute un bouton « Run workflow » dans l'onglet Actions
+  workflow_dispatch: # ajoute un bouton « Run workflow » dans l'onglet Actions
 
-concurrency: deploy         # jamais deux déploiements en même temps
+concurrency: deploy # jamais deux déploiements en même temps
 
 jobs:
   deploy:
@@ -44,18 +44,21 @@ jobs:
 
       # 5. Envoie le front buildé
       - name: Envoyer le front
-        run: rsync -az --delete frontend/dist/ $SERVER:ms-tracker/frontend/dist/
+        run:
+          rsync -az --delete frontend/dist/ $SERVER:ms-tracker/frontend/dist/
 
-      # 6. Redémarre l'API (AlwaysData la relance à la requête suivante)
-      - name: Redémarrer uvicorn
-        run: ssh $SERVER 'pkill -f "[u]vicorn api.main:app" || true'
+      # 6. Redémarre le site via l'API d'AlwaysData (comme le bouton de l'admin)
+      - name: Redémarrer le site
+        run: |
+          curl -sf -X POST --basic --user "${{ secrets.ALWAYSDATA_API_TOKEN }}:" \
+            "https://api.alwaysdata.com/v1/site/${{ secrets.ALWAYSDATA_SITE_ID }}/restart/"
 
       # 7. Vérifie que la prod tourne sur CE commit
       - name: Vérifier la version en ligne
         run: |
           for i in 1 2 3 4 5 6; do
             sleep 5
-            sha=$(curl -s -m 20 https://ms-tracker.alwaysdata.net/api/version | jq -r .git_sha)
+            sha=$(curl -s -m 20 https://ms-tracker.alwaysdata.net/api/version | jq -r .git_sha 2>/dev/null || true)
             echo "En ligne : $sha — attendu : $GITHUB_SHA"
             if [ -n "$sha" ] && [ "${GITHUB_SHA#$sha}" != "$GITHUB_SHA" ]; then exit 0; fi
           done
