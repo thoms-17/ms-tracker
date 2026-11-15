@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 VENV := ./.venv/bin
 
-.PHONY: dev api front install build
+.PHONY: dev api front install build test
 
 ## dev : lance le back (FastAPI :8000) et le front (Vite :5173) ensemble
 dev:
@@ -23,6 +23,10 @@ front:
 install:
 	$(VENV)/pip install -r requirements.txt
 	cd frontend && npm install --no-fund --no-audit
+
+## test : tests du back (base jetable, sans réseau)
+test:
+	$(VENV)/python -m pytest -q
 
 ## build : build de production du front
 build:

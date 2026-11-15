@@ -3,7 +3,7 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9   # upload de fichiers (import TV Time)
 
-# Cœur métier : base, TMDB, données
+# Cœur métier : base, TMDB ; pandas/numpy pour l'analyse hors-ligne (pas pour l'API)
 pandas>=2.2
 numpy>=1.26
 requests>=2.32
@@ -19,3 +19,6 @@ statsmodels>=0.14
 
 # Confort dev : charge un fichier .env
 python-dotenv>=1.0
+
+# Tests (make test)
+pytest>=8.0
