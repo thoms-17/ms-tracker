@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl, type UnwatchResult } from "../api";
 import Confetti from "../components/Confetti";
 import CatchUpModal from "../components/CatchUpModal";
 import Spinner from "../components/Spinner";
 import { episodeCode } from "../format";
 import { refreshAfterWatch } from "../refresh";
-import { signalerEchec } from "../toast";
+import { useOptimisticWatch } from "../watch";
 import WatchControl from "../components/WatchControl";
 import WatchProviders from "../components/WatchProviders";
 import type { EpisodeItem, SeasonGroup, SeriesDetail as Detail } from "../types";
@@ -53,6 +53,18 @@ function majEpisodes(d: Detail, ids: Set<number>, calc: (n: number) => number): 
   };
 }
 
+/** Mutation optimiste sur des épisodes de la série `uuid` (voir useOptimisticWatch). */
+function useEpisodesWatch(
+  uuid: string, ids: number[], calc: (n: number) => number,
+  mutationFn: () => Promise<unknown>, echec: string,
+  onDone: (res?: unknown) => Promise<void> | void,
+) {
+  return useOptimisticWatch<Detail>({
+    mutationFn, queryKey: ["series", uuid],
+    update: (d) => majEpisodes(d, new Set(ids), calc), echec, onDone,
+  });
+}
+
 export default function SeriesDetail() {
   const { uuid = "" } = useParams();
   const qc = useQueryClient();
@@ -78,10 +90,7 @@ export default function SeriesDetail() {
 
   /** `res` : réponse de la mutation ; seuls les retraits renvoient un UnwatchResult. */
   const refresh = (res?: unknown) => {
-    if (!(res as UnwatchResult | null | undefined)?.untracked) {
-      refreshAfterWatch(qc);
-      return;
-    }
+    if (!(res as UnwatchResult | null | undefined)?.untracked) return refreshAfterWatch(qc);
     // Plus aucun épisode vu : le serveur a retiré la série du suivi. On retourne sur
     // son aperçu TMDB (d'où l'on peut la recocher), sans relire ce détail disparu.
     const tmdbId = detail.data?.tmdb_id;
@@ -160,16 +169,18 @@ function Season({ uuid, se, open, avantNonVus, onChange }: {
   se: SeasonGroup;
   open: boolean;
   avantNonVus: (e: EpisodeItem) => Retard;
-  onChange: (res?: unknown) => void;
+  onChange: (res?: unknown) => Promise<void> | void;
 }) {
   const s = se.season_number;
-  // Ces actions ne sont pas optimistes (elles touchent toute la saison) : en cas
-  // d'échec rien ne bouge à l'écran, d'où le message pour ne pas rester muet.
-  const echec = { onError: (err: unknown) => signalerEchec(err, "Échec — saison non mise à jour") };
-  const markWatched = useMutation({ mutationFn: () => api.markSeason(uuid, s, true), onSuccess: onChange, ...echec });
-  const markUnwatched = useMutation({ mutationFn: () => api.markSeason(uuid, s, false), onSuccess: onChange, ...echec });
-  const rewatch = useMutation({ mutationFn: () => api.rewatchSeason(uuid, s), onSuccess: onChange, ...echec });
-  const removeOne = useMutation({ mutationFn: () => api.removeSeasonWatch(uuid, s), onSuccess: onChange, ...echec });
+  // Comme le serveur, les actions de saison ne touchent pas les spéciaux rangés
+  // dans une saison régulière.
+  const ids = se.episodes.filter((e) => !e.special).map((e) => e.episode_id);
+  const echec = "Échec — saison non mise à jour";
+  // « vue » ne complète que les épisodes à zéro ; « revu » ajoute un passage à tous
+  const markWatched = useEpisodesWatch(uuid, ids, (n) => n || 1, () => api.markSeason(uuid, s, true), echec, onChange);
+  const markUnwatched = useEpisodesWatch(uuid, ids, () => 0, () => api.markSeason(uuid, s, false), echec, onChange);
+  const rewatch = useEpisodesWatch(uuid, ids, (n) => n + 1, () => api.rewatchSeason(uuid, s), echec, onChange);
+  const removeOne = useEpisodesWatch(uuid, ids, (n) => n - 1, () => api.removeSeasonWatch(uuid, s), echec, onChange);
   const done = se.watched === se.total;
   // Nombre de visionnages complets de la saison = min des compteurs de ses épisodes
   // (hors spéciaux, que les actions de saison ne touchent pas).
@@ -198,51 +209,16 @@ function Season({ uuid, se, open, avantNonVus, onChange }: {
 }
 
 function Episode({ uuid, e, retard, onChange }: {
-  uuid: string; e: EpisodeItem; retard: Retard; onChange: (res?: unknown) => void;
+  uuid: string; e: EpisodeItem; retard: Retard; onChange: (res?: unknown) => Promise<void> | void;
 }) {
-  const qc = useQueryClient();
-  const cle = ["series", uuid];
-
-  /**
-   * Mise à jour optimiste : le compteur bouge dès le clic, sans attendre le
-   * serveur. Sans ça, l'affichage attend deux allers-retours (l'écriture, puis
-   * la relecture) — plusieurs secondes sur un réseau mobile ou un serveur qui
-   * sort de veille. En cas d'échec, on restaure l'état précédent.
-   */
-  const optimiste = (ids: number[], calc: (n: number) => number) => ({
-    onMutate: async () => {
-      await qc.cancelQueries({ queryKey: cle }); // évite qu'une réponse en vol écrase notre écriture
-      const precedent = qc.getQueryData<Detail>(cle);
-      if (precedent) qc.setQueryData(cle, majEpisodes(precedent, new Set(ids), calc));
-      return { precedent };
-    },
-    onError: (err: unknown, _v: void, ctx?: { precedent?: Detail }) => {
-      if (ctx?.precedent) qc.setQueryData(cle, ctx.precedent);
-      // Le compteur redescend : sans message, l'annulation passerait inaperçue.
-      signalerEchec(err, "Échec — visionnage non enregistré");
-    },
-    // réconcilie avec le serveur, succès comme échec (res dit si la série a quitté le suivi)
-    onSettled: (res: unknown) => onChange(res),
-  });
-
   const id = e.episode_id;
-  const add = useMutation({
-    mutationFn: () => api.watchEpisode(id),
-    ...optimiste([id], (n) => n + 1),
-  });
-  const catchUp = useMutation({
-    mutationFn: () => api.catchUpEpisode(id),
-    // les précédents non vus passent à 1, l'épisode ciblé est incrémenté
-    ...optimiste([...retard.ids, id], (n) => n + 1),
-  });
-  const removeOne = useMutation({
-    mutationFn: () => api.removeEpisodeWatch(id),
-    ...optimiste([id], (n) => n - 1),
-  });
-  const removeAll = useMutation({
-    mutationFn: () => api.unwatchEpisode(id),
-    ...optimiste([id], () => 0),
-  });
+  const echec = "Échec — visionnage non enregistré";
+  const add = useEpisodesWatch(uuid, [id], (n) => n + 1, () => api.watchEpisode(id), echec, onChange);
+  // les précédents non vus passent à 1, l'épisode ciblé est incrémenté
+  const catchUp = useEpisodesWatch(
+    uuid, [...retard.ids, id], (n) => n + 1, () => api.catchUpEpisode(id), echec, onChange);
+  const removeOne = useEpisodesWatch(uuid, [id], (n) => n - 1, () => api.removeEpisodeWatch(id), echec, onChange);
+  const removeAll = useEpisodesWatch(uuid, [id], () => 0, () => api.unwatchEpisode(id), echec, onChange);
   const [ask, setAsk] = useState(false); // propose de rattraper les précédents
   const num = episodeCode(e.season_number, e.episode_number);
 

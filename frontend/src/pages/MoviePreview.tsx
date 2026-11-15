@@ -1,24 +1,33 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import Spinner from "../components/Spinner";
-import { refreshAfterWatch } from "../refresh";
+import type { TmdbMoviePreview } from "../types";
+import { useOptimisticWatch } from "../watch";
 import WatchProviders from "../components/WatchProviders";
 
 export default function MoviePreview() {
   const { tmdbId = "" } = useParams();
   const id = Number(tmdbId);
   const nav = useNavigate();
-  const qc = useQueryClient();
 
   const prev = useQuery({ queryKey: ["moviePreview", id], queryFn: () => api.moviePreview(id) });
 
-  const invalidate = () => refreshAfterWatch(qc);
-  const add = useMutation({ mutationFn: () => api.watchMovieFromTmdb(id), onSuccess: invalidate });
-  const minus = useMutation({
-    mutationFn: (uuid: string) => api.removeMovieWatch(uuid),
-    onSuccess: invalidate,
+  const uuid = prev.data?.uuid;
+  const compteur = (delta: number) => (m: TmdbMoviePreview) =>
+    ({ ...m, watched_count: Math.max(0, m.watched_count + delta) });
+  const echec = "Échec — visionnage non enregistré";
+  const add = useOptimisticWatch<TmdbMoviePreview, unknown>({
+    mutationFn: () => api.watchMovieFromTmdb(id),
+    queryKey: ["moviePreview", id], update: compteur(+1), echec,
   });
+  const minus = useOptimisticWatch<TmdbMoviePreview, unknown>({
+    // `uuid` n'existe qu'une fois le film vu au moins une fois (bouton désactivé sinon)
+    mutationFn: () => api.removeMovieWatch(uuid!),
+    queryKey: ["moviePreview", id], update: compteur(-1), echec,
+  });
+  // Une action à la fois : le film n'a son `uuid` qu'après la relecture du premier ajout.
+  const pending = add.isPending || minus.isPending;
 
   if (prev.isLoading) return <Spinner />;
   if (!prev.data) return <p className="muted">Film introuvable sur TMDB.</p>;
@@ -37,16 +46,16 @@ export default function MoviePreview() {
             <>
               <p style={{ fontSize: 18 }}>Vu <strong>×{m.watched_count}</strong></p>
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn primary" disabled={add.isPending} onClick={() => add.mutate()}>
+                <button className="btn primary" disabled={pending} onClick={() => add.mutate()}>
                   Revu une fois de plus
                 </button>
-                <button className="btn" disabled={!m.uuid} onClick={() => m.uuid && minus.mutate(m.uuid)}>
+                <button className="btn" disabled={!m.uuid || pending} onClick={() => minus.mutate()}>
                   Retirer un visionnage
                 </button>
               </div>
             </>
           ) : (
-            <button className="btn primary" disabled={add.isPending} onClick={() => add.mutate()}>
+            <button className="btn primary" disabled={pending} onClick={() => add.mutate()}>
               Marquer comme vu
             </button>
           )}

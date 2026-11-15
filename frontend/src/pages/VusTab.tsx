@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import Historique from "../components/Historique";
 import WatchControl from "../components/WatchControl";
 import { monthYear } from "../format";
-import { refreshAfterWatch } from "../refresh";
+import type { MovieItem } from "../types";
+import { useOptimisticWatch } from "../watch";
 
 type Mode = "series" | "movies" | "historique";
 type Sort = "recent" | "az" | "rewatch";
@@ -105,13 +106,23 @@ function itemLink(it: Item): string | null {
   return it.tmdbId ? `/tmdb/movie/${it.tmdbId}` : null;
 }
 
+/** Mutation optimiste sur le compteur d'un film de la liste (voir useOptimisticWatch). */
+function useMovieWatch(uuid: string, calc: (n: number) => number, mutationFn: () => Promise<unknown>) {
+  return useOptimisticWatch<MovieItem[]>({
+    mutationFn, queryKey: ["movies"],
+    // un film sans visionnage quitte la liste des films vus
+    update: (list) => list
+      .map((m) => (m.uuid === uuid ? { ...m, watched_count: Math.max(0, calc(m.watched_count)) } : m))
+      .filter((m) => m.watched_count > 0),
+    echec: "Échec — visionnage non enregistré",
+  });
+}
+
 /** Bouton rond de visionnage d'un film (même composant/menu que les séries). */
 function MovieWatch({ uuid, count }: { uuid: string; count: number }) {
-  const qc = useQueryClient();
-  const inv = () => refreshAfterWatch(qc);
-  const add = useMutation({ mutationFn: () => api.watchMovie(uuid), onSuccess: inv });
-  const removeOne = useMutation({ mutationFn: () => api.removeMovieWatch(uuid), onSuccess: inv });
-  const removeAll = useMutation({ mutationFn: () => api.unwatchMovie(uuid), onSuccess: inv });
+  const add = useMovieWatch(uuid, (n) => n + 1, () => api.watchMovie(uuid));
+  const removeOne = useMovieWatch(uuid, (n) => n - 1, () => api.removeMovieWatch(uuid));
+  const removeAll = useMovieWatch(uuid, () => 0, () => api.unwatchMovie(uuid));
   return (
     <WatchControl
       count={count}
