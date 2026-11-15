@@ -249,3 +249,54 @@ class Overview(BaseModel):
 
 class UuidResponse(BaseModel):
     uuid: str
+
+
+class StatsPeriod(BaseModel):
+    """Visionnages datés d'une période (année, mois ou jour de la semaine)."""
+    episodes: int
+    movies: int
+    minutes: int
+
+
+class StatsYear(StatsPeriod):
+    year: int
+
+
+class StatsMonth(StatsPeriod):
+    month: str  # 'AAAA-MM'
+
+
+class StatsWeekday(StatsPeriod):
+    day: int  # 0 = lundi … 6 = dimanche
+
+
+class StatsGenre(BaseModel):
+    name: str
+    minutes: int
+    titles: int
+
+
+class StatsTitle(BaseModel):
+    uuid: str
+    title: str | None = None
+    poster_path: str | None = None
+    tmdb_id: int | None = None
+    minutes: int
+    views: int  # visionnages (épisodes cochés pour une série), revisionnages compris
+
+
+class Stats(BaseModel):
+    minutes: int                 # temps total, revisionnages compris
+    views: int                   # nombre de visionnages enregistrés
+    # Visionnages enregistrés en lot (import TV Time, saison cochée d'un coup, journée de
+    # plus de 24 h) : sans date réelle, ils sont absents de `years`, `months` et `weekdays`.
+    undated_views: int
+    dated_since: str | None = None
+    years: list[StatsYear]
+    months: list[StatsMonth]     # les 12 derniers mois, mois vides compris
+    weekdays: list[StatsWeekday]
+    genres: list[StatsGenre]     # un titre compte dans chacun de ses genres
+    titles_with_genres: int      # titres vus dont les genres sont connus…
+    titles_watched: int          # …sur ce total
+    top_series: list[StatsTitle]  # par temps passé
+    top_movies: list[StatsTitle]  # films revus, par nombre de visionnages

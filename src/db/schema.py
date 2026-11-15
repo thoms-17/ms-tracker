@@ -131,6 +131,9 @@ def init_db() -> None:
         ensure_column(conn, "episodes", "air_date", "TEXT")
         # Revisionnage retiré d'« En cours » : masqué jusqu'au prochain visionnage
         ensure_column(conn, "series", "rewatch_dismissed_at", "TEXT")
+        # Genres TMDB (liste JSON d'identifiants) ; NULL = pas encore récupérés
+        ensure_column(conn, "series", "genres", "TEXT")
+        ensure_column(conn, "movies", "genres", "TEXT")
         # Inscription + vérification d'email (bases créées avant l'ajout)
         ensure_column(conn, "users", "email", "TEXT")
         ensure_column(conn, "users", "email_verified", "INTEGER DEFAULT 0")

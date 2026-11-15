@@ -183,3 +183,38 @@ export interface TmdbMoviePreview {
   watched_count: number;
   uuid: string | null;
 }
+
+/** Visionnages datés d'une période (année, mois ou jour de la semaine). */
+export interface StatsPeriod {
+  episodes: number;
+  movies: number;
+  minutes: number;
+}
+
+export interface StatsTitle {
+  uuid: string;
+  title: string | null;
+  poster_path: string | null;
+  tmdb_id: number | null;
+  minutes: number;
+  /** Visionnages (épisodes cochés pour une série), revisionnages compris. */
+  views: number;
+}
+
+export interface Stats {
+  minutes: number;
+  views: number;
+  /** Visionnages enregistrés en lot, sans date réelle : absents du rythme. */
+  undated_views: number;
+  dated_since: string | null;
+  years: (StatsPeriod & { year: number })[];
+  /** Les 12 derniers mois ('AAAA-MM'), mois vides compris. */
+  months: (StatsPeriod & { month: string })[];
+  /** 0 = lundi … 6 = dimanche. */
+  weekdays: (StatsPeriod & { day: number })[];
+  genres: { name: string; minutes: number; titles: number }[];
+  titles_with_genres: number;
+  titles_watched: number;
+  top_series: StatsTitle[];
+  top_movies: StatsTitle[];
+}

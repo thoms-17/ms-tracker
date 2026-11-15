@@ -88,7 +88,7 @@ def track_series(tmdb_id: int, body: TrackRequest | None = None, user_id: int = 
     meta = enrich.fetch_tv_meta(tmdb_id, key)
     seasons = enrich.fetch_tv_structure(tmdb_id, key)
     uuid = db.add_series_from_tmdb(user_id, tmdb_id, meta.get("title"), seasons,
-                                   poster_path=meta.get("poster_path"))
+                                   poster_path=meta.get("poster_path"), genre_ids=meta.get("genre_ids"))
     if body and body.mark_season is not None and body.mark_number is not None:
         ep_id = db.episode_id_of(user_id, uuid, body.mark_season, body.mark_number)
         if ep_id and body.catch_up:
@@ -121,6 +121,7 @@ def watch_movie_from_tmdb(tmdb_id: int, user_id: int = Uid):
     key = _key()
     meta = enrich.fetch_movie_meta(tmdb_id, key)
     uuid = db.add_movie_from_tmdb(user_id, tmdb_id, meta.get("title"), meta.get("year"),
-                                  poster_path=meta.get("poster_path"), runtime=meta.get("runtime"))
+                                  poster_path=meta.get("poster_path"), runtime=meta.get("runtime"),
+                                  genre_ids=meta.get("genre_ids"))
     db.add_movie_watch(user_id, uuid)
     return UuidResponse(uuid=uuid)

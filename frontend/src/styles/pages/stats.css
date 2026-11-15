@@ -1,0 +1,53 @@
+/* Onglet « Stats » : graphiques à une seule série, dans la couleur d'accent. */
+.stat-section { margin-top: 30px; }
+.stat-note { font-size: 12px; line-height: 1.5; max-width: 640px; margin: 10px 0 0; }
+.statspage > .stat-note { margin-top: 30px; }
+.stat-lead { margin: -6px 0 10px; }
+
+/* Écran large : les sections se rangent sur deux colonnes */
+@media (min-width: 900px) {
+  .statspage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 56px; }
+  .statspage > .stats, .statspage > .stat-note { grid-column: 1 / -1; }
+}
+
+/* Classement à barres horizontales : libellé · barre · valeur */
+.bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; max-width: 640px; }
+.bars-row { display: grid; grid-template-columns: 118px 1fr auto; align-items: center; gap: 12px; font-size: 14px; }
+.bars-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars-track { display: block; height: 8px; }
+/* extrémité arrondie côté valeur, bord droit côté origine */
+.bars-fill { display: block; height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; }
+.bars-value { min-width: 52px; text-align: right; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+/* Histogramme : une colonne par mois / par jour */
+.cols-chart { max-width: 640px; }
+.cols { display: flex; align-items: flex-end; gap: 6px; }
+.col {
+  flex: 1; min-width: 0; padding: 0; border: none; background: none; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.col-track {
+  width: 100%; height: 120px; display: flex; align-items: flex-end; justify-content: center;
+  border-bottom: 1px solid var(--glass-brd);
+}
+.col-fill {
+  width: 100%; max-width: 24px; min-height: 2px; background: var(--accent); opacity: 0.55;
+  border-radius: 4px 4px 0 0; transition: opacity .15s ease;
+}
+.col.active .col-fill { opacity: 1; }
+.col.active { color: var(--text); }
+.col-label { font-size: 11px; white-space: nowrap; }
+.cols-detail { margin: 10px 0 0; font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* Classement de titres : affiche · titre + barre · valeur */
+.rank { display: flex; flex-direction: column; max-width: 640px; }
+.rank-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); color: inherit; }
+a.rank-row:hover { background: rgba(255, 255, 255, 0.04); }
+.rank-poster {
+  width: 34px; aspect-ratio: 2 / 3; object-fit: cover; flex-shrink: 0;
+  border-radius: 4px; background: var(--glass); border: 1px solid var(--glass-brd);
+}
+.rank-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.rank-title { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-value { flex-shrink: 0; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }

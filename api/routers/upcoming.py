@@ -38,13 +38,15 @@ def upcoming(user_id: int = Uid):
 def _do_sync(user_id: int, key: str):
     """Enrichissement complet d'un utilisateur :
     1) affiches + résolution des tmdb_id (indispensable à la suite) ;
-    2) prochains épisodes / nouveautés (nécessite les tmdb_id).
+    2) prochains épisodes / nouveautés, genres des séries (nécessite les tmdb_id) ;
+    3) genres des films qui n'en ont pas encore (statistiques).
     """
     job = _job_for(user_id)
     try:
-        db.sync_images(user_id, key, progress=lambda f, t: job.update(progress=f * 0.5))
-        res = db.sync_updates(user_id, key, progress=lambda f, t: job.update(progress=0.5 + f * 0.5))
+        db.sync_images(user_id, key, progress=lambda f, t: job.update(progress=f * 0.3))
+        res = db.sync_updates(user_id, key, progress=lambda f, t: job.update(progress=0.3 + f * 0.4))
         job["result"] = res
+        db.sync_genres(user_id, key, progress=lambda f, t: job.update(progress=0.7 + f * 0.3))
     finally:
         job.update(running=False, progress=1.0)
 

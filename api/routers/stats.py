@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from src import db, stats
 
 from .. import deps, serializers
-from ..schemas import Overview, WatchTime
+from ..schemas import Overview, Stats, WatchTime
 
 router = APIRouter(tags=["stats"])
 
@@ -33,3 +33,10 @@ def watch_time(user_id: int = Uid):
         total_label=stats.format_duration(wm["total_min"]),
         coverage=wm["coverage"],
     )
+
+
+@router.get("/stats", response_model=Stats)
+def statistics(user_id: int = Uid):
+    """Statistiques de l'onglet « Stats » : rythme, genres, titres les plus regardés."""
+    s = stats.user_statistics(user_id)
+    return Stats(**{**s, "dated_since": serializers.iso(s["dated_since"] and db.fmt(s["dated_since"]))})

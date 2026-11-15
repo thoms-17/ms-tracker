@@ -8,6 +8,7 @@ import Spinner from "../components/Spinner";
 import { enCours } from "../enCours";
 import { DEFAULT_TAB, tabFromParam, type Tab } from "../tabs";
 import Prochainement from "./Prochainement";
+import Stats from "./Stats";
 import VusTab from "./VusTab";
 
 export default function Suivi() {
@@ -68,6 +69,9 @@ export default function Suivi() {
         <button className={tab === "prochainement" ? "active" : ""} onClick={() => setTab("prochainement")}>
           Prochainement
         </button>
+        <button className={tab === "stats" ? "active" : ""} onClick={() => setTab("stats")}>
+          Stats
+        </button>
       </div>
 
       {tab === "encours" && (
@@ -94,6 +98,8 @@ export default function Suivi() {
       {tab === "vus" && <VusTab />}
 
       {tab === "prochainement" && <Prochainement />}
+
+      {tab === "stats" && <Stats />}
     </>
   );
 }

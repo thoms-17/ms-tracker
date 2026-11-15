@@ -117,6 +117,16 @@ def fetch_tv_structure(tmdb_id: int, key: str) -> list[dict]:
     return seasons
 
 
+def _genre_ids(det: dict) -> list[int]:
+    return [g["id"] for g in det.get("genres") or [] if g.get("id") is not None]
+
+
+def fetch_genre_ids(tmdb_id: int, media: str, key: str) -> list[int] | None:
+    """Identifiants de genre d'un titre (media : 'tv' | 'movie'), ou None si TMDB ne répond pas."""
+    det = details(key, tmdb_id, media)
+    return None if det is None else _genre_ids(det)
+
+
 def fetch_tv_meta(tmdb_id: int, key: str) -> dict:
     """Métadonnées d'une série : titre, affiche, synopsis, nb saisons/épisodes."""
     det = details(key, tmdb_id, "tv") or {}
@@ -127,6 +137,7 @@ def fetch_tv_meta(tmdb_id: int, key: str) -> dict:
         "n_seasons": det.get("number_of_seasons"),
         "n_episodes": det.get("number_of_episodes"),
         "first_air_date": det.get("first_air_date"),
+        "genre_ids": _genre_ids(det),
     }
 
 
@@ -138,6 +149,7 @@ def fetch_movie_meta(tmdb_id: int, key: str) -> dict:
         "year": int(date[:4]) if date[:4].isdigit() else None,
         "runtime": det.get("runtime"),
         "poster_path": det.get("poster_path"),
+        "genre_ids": _genre_ids(det),
     }
 
 
@@ -161,6 +173,7 @@ def fetch_series_updates(tmdb_id: int, key: str) -> dict:
         "status": det.get("status"),
         "next_episode_to_air": det.get("next_episode_to_air"),
         "last_episode_to_air": det.get("last_episode_to_air"),
+        "genre_ids": _genre_ids(det),
         "seasons": [s["season_number"] for s in det.get("seasons", []) if s.get("season_number") is not None],
     }
 

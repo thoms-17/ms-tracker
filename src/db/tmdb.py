@@ -8,6 +8,7 @@ pendant des appels réseau ferait échouer les visionnages cochés entre-temps
 from __future__ import annotations
 
 import datetime as dt
+import json
 import uuid as uuidlib
 
 from .. import enrich
@@ -16,8 +17,14 @@ from .mutations import set_meta
 from .queries import image_coverage
 
 
+def _genres_json(genre_ids: list[int] | None) -> str | None:
+    """Liste d'identifiants de genre au format de la base (None = inconnus, à récupérer)."""
+    return None if genre_ids is None else json.dumps(genre_ids)
+
+
 def add_series_from_tmdb(user_id: int, tmdb_id: int, title: str, seasons: list[dict],
-                         status: str = "continuing", poster_path: str | None = None) -> str:
+                         status: str = "continuing", poster_path: str | None = None,
+                         genre_ids: list[int] | None = None) -> str:
     """seasons : [{'season_number': n, 'episodes': [{'episode_number','name','runtime'}...]}, ...]"""
     with connect() as conn:
         existing = conn.execute(
@@ -27,9 +34,9 @@ def add_series_from_tmdb(user_id: int, tmdb_id: int, title: str, seasons: list[d
             return existing[0]
         su = str(uuidlib.uuid4())
         conn.execute(
-            "INSERT INTO series(series_uuid,user_id,title,status,tmdb_id,poster_path,created_at,source) "
-            "VALUES (?,?,?,?,?,?,?, 'manual')",
-            (su, user_id, title, status, tmdb_id, poster_path or "", now()),
+            "INSERT INTO series(series_uuid,user_id,title,status,tmdb_id,poster_path,genres,created_at,source) "
+            "VALUES (?,?,?,?,?,?,?,?, 'manual')",
+            (su, user_id, title, status, tmdb_id, poster_path or "", _genres_json(genre_ids), now()),
         )
         conn.executemany(
             "INSERT OR IGNORE INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime,air_date)"
@@ -47,7 +54,8 @@ def add_series_from_tmdb(user_id: int, tmdb_id: int, title: str, seasons: list[d
 
 
 def add_movie_from_tmdb(user_id: int, tmdb_id: int, title: str, year: int | None,
-                        poster_path: str | None = None, runtime: int | None = None) -> str:
+                        poster_path: str | None = None, runtime: int | None = None,
+                        genre_ids: list[int] | None = None) -> str:
     with connect() as conn:
         existing = conn.execute(
             "SELECT uuid FROM movies WHERE tmdb_id=? AND user_id=?", (tmdb_id, user_id)
@@ -56,9 +64,9 @@ def add_movie_from_tmdb(user_id: int, tmdb_id: int, title: str, year: int | None
             return existing[0]
         mu = str(uuidlib.uuid4())
         conn.execute(
-            "INSERT INTO movies(uuid,user_id,title,year,tmdb_id,poster_path,runtime,created_at,source) "
-            "VALUES (?,?,?,?,?,?,?,?, 'manual')",
-            (mu, user_id, title, year, tmdb_id, poster_path or "", runtime, now()),
+            "INSERT INTO movies(uuid,user_id,title,year,tmdb_id,poster_path,runtime,genres,created_at,source) "
+            "VALUES (?,?,?,?,?,?,?,?,?, 'manual')",
+            (mu, user_id, title, year, tmdb_id, poster_path or "", runtime, _genres_json(genre_ids), now()),
         )
     return mu
 
@@ -201,10 +209,11 @@ def sync_updates(user_id: int, key: str, progress=None) -> dict:
             if upd.get("status") in LIVE_STATUSES or ne:
                 refresh_air_dates(conn, su, tmdb_id, upd.get("seasons") or [], key)
             conn.execute(
-                "UPDATE series SET tmdb_status=?, next_air_date=?, next_ep_season=?, next_ep_number=?, next_ep_name=? "
-                "WHERE series_uuid=?",
+                "UPDATE series SET tmdb_status=?, next_air_date=?, next_ep_season=?, next_ep_number=?, next_ep_name=?, "
+                # la fiche TMDB vient d'être lue : ses genres sont offerts (inchangés si TMDB n'a pas répondu)
+                "genres=COALESCE(?, genres) WHERE series_uuid=?",
                 (upd.get("status"), ne.get("air_date"), ne.get("season_number"),
-                 ne.get("episode_number"), ne.get("name"), su),
+                 ne.get("episode_number"), ne.get("name"), _genres_json(upd.get("genre_ids")), su),
             )
             conn.commit()  # un commit par série : libère la base avant l'appel TMDB suivant
             local_reg = conn.execute(
@@ -247,3 +256,27 @@ def sync_images(user_id: int, key: str, progress=None) -> dict:
                 if progress:
                     progress(done / total, title)
     return image_coverage(user_id)
+
+
+def sync_genres(user_id: int, key: str, progress=None) -> int:
+    """Récupère les genres manquants des films de l'utilisateur. Idempotent.
+
+    Les séries reçoivent les leurs dans `sync_updates`, qui lit déjà leur fiche TMDB.
+    Un film dont la fiche ne répond pas reste à NULL et sera retenté à la synchro
+    suivante. Renvoie le nombre de films renseignés.
+    """
+    done = 0
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT uuid, tmdb_id FROM movies WHERE genres IS NULL AND tmdb_id IS NOT NULL AND user_id=?",
+            (user_id,),
+        ).fetchall()
+        for i, (uuid, tmdb_id) in enumerate(rows):
+            genre_ids = enrich.fetch_genre_ids(tmdb_id, "movie", key)
+            if genre_ids is not None:
+                conn.execute("UPDATE movies SET genres=? WHERE uuid=?", (_genres_json(genre_ids), uuid))
+                conn.commit()
+                done += 1
+            if progress:
+                progress((i + 1) / len(rows), f"{i + 1}/{len(rows)}")
+    return done

@@ -21,7 +21,11 @@ interface Item {
   year: number | null;
   date: string | null;
   times: number; // nb de visionnages complets
+  rewatch: number; // visionnages au-delà du premier (départage les séries à égalité)
 }
+
+/** Nombre de titres du bandeau « Tes plus revus ». */
+const PODIUM = 6;
 
 export default function VusTab() {
   const seriesQ = useQuery({ queryKey: ["series"], queryFn: api.series });
@@ -39,12 +43,20 @@ export default function VusTab() {
       ? completed.map((s) => ({
           kind: "series", uuid: s.uuid, tmdbId: null, title: s.title, poster: s.poster_path,
           year: s.last_watched ? new Date(s.last_watched).getFullYear() : null,
-          date: s.last_watched, times: s.times_watched,
+          date: s.last_watched, times: s.times_watched, rewatch: s.total_rewatch,
         }))
       : movies.map((m) => ({
           kind: "movie", uuid: m.uuid, tmdbId: m.tmdb_id, title: m.title, poster: m.poster_path,
-          year: m.year, date: m.last_watched, times: m.watched_count,
+          year: m.year, date: m.last_watched, times: m.watched_count, rewatch: m.watched_count - 1,
         }));
+
+  // Bandeau « Tes plus revus » : visible sans avoir à changer le tri, masqué pendant
+  // un filtre (la liste filtrée est alors ce qu'on est venu chercher).
+  const plusRevus = q
+    ? []
+    : raw.filter((x) => x.times >= 2)
+        .sort((a, b) => b.times - a.times || b.rewatch - a.rewatch || a.title.localeCompare(b.title))
+        .slice(0, PODIUM);
 
   const filtered = q
     ? raw.filter((x) => x.title.toLowerCase().includes(q.toLowerCase()))
@@ -85,6 +97,15 @@ export default function VusTab() {
         </>
         )}
       </div>
+
+      {mode !== "historique" && plusRevus.length >= 3 && (
+        <section className="podium" aria-label="Tes plus revus">
+          <h3 className="section-title">Tes plus revus</h3>
+          <div className="podium-row">
+            {plusRevus.map((it) => <PodiumCard key={it.uuid} it={it} />)}
+          </div>
+        </section>
+      )}
 
       {mode === "historique" ? (
         <Historique />
@@ -137,6 +158,22 @@ function MovieWatch({ uuid, count }: { uuid: string; count: number }) {
 
 function Badge({ times }: { times: number }) {
   return times >= 2 ? <span className="badge-rewatch">vu ×{times}</span> : null;
+}
+
+/** Vignette du bandeau « Tes plus revus » : affiche et nombre de visionnages. */
+function PodiumCard({ it }: { it: Item }) {
+  const url = posterUrl(it.poster);
+  const link = itemLink(it);
+  const body = (
+    <>
+      {url ? <img className="podium-poster" src={url} alt="" /> : <span className="podium-poster" />}
+      <span className="podium-count">vu ×{it.times}</span>
+      <span className="podium-title">{it.title}</span>
+    </>
+  );
+  return link
+    ? <Link to={link} className="podium-card">{body}</Link>
+    : <div className="podium-card">{body}</div>;
 }
 
 function VusCard({ it }: { it: Item }) {

@@ -135,6 +135,42 @@ def overview(user_id: int) -> dict:
             "span_start": span_start, "span_end": span_end}
 
 
+def watch_log(user_id: int, episode_default: int, movie_default: int) -> list[sqlite3.Row]:
+    """Journal des visionnages de l'utilisateur, une ligne par visionnage.
+
+    `kind` ('episode' | 'movie'), `title_id` (uuid de la série ou du film), `minutes`
+    (durée du titre, ou la valeur de repli si elle est inconnue) et `watched_at`.
+    """
+    with connect() as conn:
+        return _rows(
+            conn,
+            """
+            SELECT 'episode' AS kind, e.series_uuid AS title_id, w.watched_at,
+                   COALESCE(e.runtime, ?) AS minutes
+            FROM watches w JOIN episodes e ON e.id = w.episode_id
+            JOIN series s ON s.series_uuid = e.series_uuid WHERE s.user_id = ?
+            UNION ALL
+            SELECT 'movie', m.uuid, w.watched_at, COALESCE(m.runtime, ?)
+            FROM watches w JOIN movies m ON m.uuid = w.movie_uuid WHERE m.user_id = ?
+            """,
+            (episode_default, user_id, movie_default, user_id),
+        )
+
+
+def titles(user_id: int) -> list[sqlite3.Row]:
+    """Séries et films de l'utilisateur : `kind` ('series' | 'movie'), `title_id`, titre,
+    affiche, id TMDB et genres (liste JSON d'identifiants TMDB, NULL si inconnus)."""
+    with connect() as conn:
+        return _rows(
+            conn,
+            "SELECT 'series' AS kind, series_uuid AS title_id, title, poster_path, tmdb_id, genres "
+            "FROM series WHERE user_id = ? "
+            "UNION ALL "
+            "SELECT 'movie', uuid, title, poster_path, tmdb_id, genres FROM movies WHERE user_id = ?",
+            (user_id, user_id),
+        )
+
+
 def get_user_id(username: str) -> int | None:
     with connect() as conn:
         row = conn.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()

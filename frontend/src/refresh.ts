@@ -6,7 +6,7 @@ import type { QueryClient, QueryKey } from "@tanstack/react-query";
  * Chaque clé couvre aussi ses sous-clés (["series"] → liste ET détails).
  */
 const WATCH_DERIVED = new Set([
-  "series", "movies", "watchTime", "history", "upcoming", "search", "tvPreview", "moviePreview",
+  "series", "movies", "watchTime", "stats", "history", "upcoming", "search", "tvPreview", "moviePreview",
 ]);
 
 /**

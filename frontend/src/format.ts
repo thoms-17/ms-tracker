@@ -30,3 +30,9 @@ export function relativeDay(iso: string | null): string {
 export function monthYear(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString("fr-FR", { month: "short", year: "2-digit" }) : "";
 }
+
+/** 2280 → "38 h" ; 45 → "45 min" (durées de visionnage, arrondies à l'heure). */
+export function hours(minutes: number): string {
+  if (minutes < 60) return `${Math.round(minutes)} min`;
+  return `${Math.round(minutes / 60).toLocaleString("fr-FR")} h`;
+}

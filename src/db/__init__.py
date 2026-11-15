@@ -16,7 +16,7 @@ from .auth import (RegistrationError, create_email_token, create_invite,
                    reset_password, reset_token_valid, set_active, set_email,
                    set_password, user_id_for_session, verify_credentials,
                    verify_email_token)
-from .connection import DB_PATH, NotOwned, connect, get_conn, now
+from .connection import DB_PATH, NotOwned, connect, fmt, get_conn, now
 from .mutations import (add_episode_watch, add_movie_watch, catch_up_episode,
                         dismiss_rewatch, mark_season, remove_last_episode_watch,
                         remove_last_movie_watch, remove_season_watch,
@@ -25,17 +25,17 @@ from .mutations import (add_episode_watch, add_movie_watch, catch_up_episode,
 from .queries import (episode_id_of, get_meta, get_user_id, get_username,
                       image_coverage, movie_by_tmdb, next_unwatched_episode,
                       overview, recent_watches,
-                      series_uuid_by_tmdb, tracked_episodes, tracked_series,
-                      upcoming_episodes, watch_minutes, watched_movies)
+                      series_uuid_by_tmdb, titles, tracked_episodes, tracked_series,
+                      upcoming_episodes, watch_log, watch_minutes, watched_movies)
 from .schema import get_or_create_user, init_db
 from .tmdb import (add_movie_from_tmdb, add_series_from_tmdb,
-                   refresh_series_from_tmdb, sync_images,
+                   refresh_series_from_tmdb, sync_genres, sync_images,
                    sync_updates)
 
 __all__ = [
     "DB_PATH", "NotOwned", "connect", "get_conn", "now", "init_db",
     "tracked_series", "tracked_episodes", "next_unwatched_episode", "watched_movies",
-    "watch_minutes", "overview",
+    "watch_minutes", "overview", "watch_log", "titles",
     "get_user_id", "get_username", "get_or_create_user",
     "series_uuid_by_tmdb", "episode_id_of", "image_coverage",
     "get_meta", "set_meta", "upcoming_episodes", "movie_by_tmdb", "recent_watches",
@@ -43,7 +43,7 @@ __all__ = [
     "mark_season", "rewatch_season", "remove_season_watch", "dismiss_rewatch",
     "add_movie_watch", "remove_last_movie_watch", "set_movie_unwatched",
     "add_series_from_tmdb", "add_movie_from_tmdb", "refresh_series_from_tmdb",
-    "sync_images", "sync_updates",
+    "sync_images", "sync_updates", "sync_genres",
     # auth
     "verify_credentials", "set_password", "create_session", "delete_session",
     "delete_user_sessions", "user_id_for_session", "purge_expired_sessions",

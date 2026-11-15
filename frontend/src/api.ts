@@ -4,6 +4,7 @@ import type {
   SearchItem,
   SeriesDetail,
   SeriesSummary,
+  Stats,
   SyncStatus,
   TmdbMoviePreview,
   TmdbSeriesPreview,
@@ -96,6 +97,7 @@ export const api = {
   upcoming: () => req<UpcomingItem[]>("/upcoming"),
   history: (limit = 20) => req<HistoryItem[]>(`/history?limit=${limit}`),
   watchTime: () => req<WatchTime>("/stats/watch-time"),
+  stats: () => req<Stats>("/stats"),
 
   // synchro TMDB (tâche de fond, déclenchée par AutoSync)
   syncStatus: () => req<SyncStatus>("/sync/status"),

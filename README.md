@@ -12,7 +12,12 @@ métier Python (SQLite, client TMDB). En production, un seul processus sert l'AP
   les séries à jour qui attendent une sortie passent dans « Prochainement ».
 - **Détail d'une série** — épisodes saison par saison, revisionnages illimités, rattrapage des
   épisodes précédents, actions sur une saison entière, revisionnage en cours.
-- **Vus** — séries terminées, films et historique des derniers visionnages.
+- **Vus** — séries terminées, films et historique des derniers visionnages, avec un bandeau
+  « Tes plus revus ».
+- **Stats** — rythme des 12 derniers mois, jours de visionnage, temps par année et par genre,
+  séries les plus chronophages, films les plus revus, séries laissées en plan. Les
+  visionnages enregistrés en lot (import TV Time, saison cochée d'un coup) n'ont pas de date
+  réelle : ils comptent dans les totaux, pas dans le rythme.
 - **Prochainement** — calendrier des prochains épisodes. Une synchro TMDB quotidienne,
   automatique, ajoute les nouveaux épisodes (ignorée si la numérotation héritée de TV Time
   diverge de TMDB, pour ne jamais injecter d'épisodes erronés).
@@ -22,7 +27,8 @@ métier Python (SQLite, client TMDB). En production, un seul processus sert l'AP
 - **Comptes** — connexion par cookie de session, inscription sur invitation avec vérification
   d'email, mot de passe oublié.
 
-**À venir : statistiques avancées.** Les modules d'analyse (`src/loader.py`, `src/models/`,
+**À venir : recommandations.** Les genres TMDB de chaque titre sont déjà stockés (ils
+alimentent l'onglet Stats). Les modules d'analyse (`src/loader.py`, `src/models/`,
 `src/enrich/library.py` : prévisions, risque d'abandon, profils de séries) sont conservés
 comme base technique mais ne sont branchés sur aucun écran pour l'instant.
 

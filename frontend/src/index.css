@@ -36,6 +36,7 @@
 @import "./styles/components/feedback.css";
 @import "./styles/pages/detail.css";
 @import "./styles/pages/upcoming.css";
+@import "./styles/pages/stats.css";
 @import "./styles/base/utilities.css";
 
 /* Recherche, plateformes, navigation */

@@ -2,12 +2,13 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { MouseEvent, PointerEvent } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { TABS, tabFromParam, tabHref, type Tab } from "../tabs";
-import { CalendarIcon, CheckIcon, PlayIcon, SearchIcon } from "./icons";
+import { CalendarIcon, ChartIcon, CheckIcon, PlayIcon, SearchIcon } from "./icons";
 
 const ICONS: Record<Tab, () => JSX.Element> = {
   encours: PlayIcon,
   vus: CheckIcon,
   prochainement: CalendarIcon,
+  stats: ChartIcon,
 };
 const NAV = TABS.map((t) => ({ ...t, icon: ICONS[t.key] }));
 
@@ -123,7 +124,7 @@ export default function BottomNav({ onSearch }: { onSearch: () => void }) {
           {/* remonté à chaque changement d'onglet → rejoue l'étirement */}
           <span key={shownIdx} className="bn-bubble-body lg" />
         </span>
-        {NAV.map(({ key, label, icon: Icon }, i) => (
+        {NAV.map(({ key, label, short, icon: Icon }, i) => (
           <Link
             key={key}
             ref={(el) => (itemRefs.current[i] = el)}
@@ -133,7 +134,7 @@ export default function BottomNav({ onSearch }: { onSearch: () => void }) {
             draggable={false}
           >
             <Icon />
-            <span>{label}</span>
+            <span>{short ?? label}</span>
           </Link>
         ))}
       </div>
