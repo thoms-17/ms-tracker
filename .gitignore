@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 secrets.toml
 .env
-data/cache/*.json
 # Aucune base SQLite dans git (elles contiennent des données personnelles)
 data/*.db
 data/*.db-wal

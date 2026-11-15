@@ -1,23 +1,6 @@
-# API (FastAPI)
-fastapi>=0.110
-uvicorn[standard]>=0.29
-
-# Cœur métier : base, TMDB ; pandas/numpy pour l'analyse hors-ligne (pas pour l'API)
-pandas>=2.2
-numpy>=1.26
-requests>=2.32
-httpx>=0.27
-python-dateutil>=2.9
-
-# Authentification (mots de passe Argon2id)
-argon2-cffi>=23.1
-
-# Stats / ML (exposés via l'API plus tard)
-scikit-learn>=1.5
-statsmodels>=0.14
-
-# Confort dev : charge un fichier .env
-python-dotenv>=1.0
+# Dépendances de DÉVELOPPEMENT : celles de la production, plus les outils de test.
+# (make install)
+-r requirements-prod.txt
 
 # Tests (make test)
 pytest>=8.0

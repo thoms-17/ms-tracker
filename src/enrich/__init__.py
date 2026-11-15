@@ -1,10 +1,7 @@
-"""Enrichissement TMDB : client HTTP+cache, API de recherche.
+"""TMDB : client HTTP, recherche, métadonnées et genres.
 
 Réexporte l'API publique : les appelants font `from src import enrich` puis
 `enrich.search_titles(...)`, ou `from src.enrich import search_titles`.
-
-L'enrichissement de bibliothèque en DataFrames (`src.enrich.library`, analyse
-hors-ligne) n'est pas réexporté : il dépend de pandas, que l'API n'importe pas.
 """
 from __future__ import annotations
 

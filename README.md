@@ -27,11 +27,6 @@ métier Python (SQLite, client TMDB). En production, un seul processus sert l'AP
 - **Comptes** — connexion par cookie de session, inscription sur invitation avec vérification
   d'email, mot de passe oublié.
 
-**À venir : recommandations.** Les genres TMDB de chaque titre sont déjà stockés (ils
-alimentent l'onglet Stats). Les modules d'analyse (`src/loader.py`, `src/models/`,
-`src/enrich/library.py` : prévisions, risque d'abandon, profils de séries) sont conservés
-comme base technique mais ne sont branchés sur aucun écran pour l'instant.
-
 ## Architecture des données
 
 - **Source de vérité** : base SQLite `data/tvtime.db`, créée au premier lancement.
@@ -39,8 +34,8 @@ comme base technique mais ne sont branchés sur aucun écran pour l'instant.
 - **Modèle** : chaque visionnage est une ligne dans la table `watches` → les revisionnages
   illimités et leur historique sont natifs. Le package `src/db/` expose les lectures (SQL)
   et les mutations (marquer vu, +1 revu, ajouter un titre…).
-- **API sans pandas** : l'API lit la base directement en SQL. pandas ne sert qu'à l'analyse
-  hors-ligne (`src/loader.py`, `src/models/`) et n'est pas installé en production.
+- **Tout en SQL** : listes et statistiques sont calculées directement en base, sans pandas ni
+  bibliothèque d'analyse — ce qui garde l'API légère sur un hébergement gratuit.
 
 ## Installation
 
@@ -62,15 +57,6 @@ make test             # tests du back (base SQLite jetable, aucun appel réseau)
 
 Voir **[DEPLOY.md](DEPLOY.md)** pour la mise en production (AlwaysData) et le workflow des branches.
 
-## Notes sur les modules d'analyse (non branchés)
-
-- **Import groupé** : TV Time attribuait le même `watched_at` à des centaines d'épisodes
-  lors du premier import. Ces lignes sont marquées (`is_bulk_import`) et exclues des
-  analyses de rythme temporel pour ne pas fausser les tendances.
-- **Modèles** : ML classique (scikit-learn, statsmodels), choisi pour sa robustesse et son
-  interprétabilité sur ce volume de données. Le label « série délaissée » est heuristique —
-  à lire comme une aide à la décision, pas une vérité absolue.
-
 ## Structure
 
 Séparation claire back / front, posés sur un cœur métier Python sans dépendance UI.
@@ -89,13 +75,10 @@ frontend/            # Front React + TypeScript (Vite)
   src/pages/         #   Suivi, SeriesDetail, SeriesPreview, MoviePreview
   src/components/    #   SearchBar (recherche à la frappe)
 src/                 # Cœur métier (aucune dépendance framework UI)
-  loader.py          #   jeu de données en DataFrames (analyse hors-ligne uniquement)
-  stats.py           #   calcul du temps de visionnage
+  stats.py           #   temps de visionnage et statistiques de l'onglet Stats
   db/                #   base SQLite : connection · schema · queries · mutations · tmdb
-  enrich/            #   client TMDB : client · api · library
-  models/            #   ML : forecast · completion · clustering (exposés via l'API à venir)
+  enrich/            #   client TMDB : client · api · genres
 tests/               # tests du back (pytest) : mutations, listes, comptes, synchro
 Makefile             # make dev / api / front / install / build / test / release
 data/tvtime.db       # base (générée au 1er lancement, WAL)
-data/cache/          # cache TMDB (généré)
 ```

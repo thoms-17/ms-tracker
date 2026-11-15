@@ -1,8 +1,6 @@
-# Dépendances de PRODUCTION (API + auth).
-# Volontairement SANS pandas/numpy ni les libs ML (scikit-learn, statsmodels, scipy) :
-# l'API lit la base en SQL et ne les importe pas → moins de disque, de mémoire et un
-# démarrage plus rapide (utile sur l'hébergement gratuit). Un test le garantit
-# (tests/test_api_imports.py).
+# Dépendances de PRODUCTION (API + auth), aussi utilisées par la CI.
+# Volontairement légères : l'API lit la base en SQL, sans pandas ni bibliothèque
+# d'analyse → peu de disque, peu de mémoire et un démarrage rapide (hébergement gratuit).
 # En local/dev, utilise plutôt requirements.txt (qui contient tout).
 
 fastapi>=0.110
