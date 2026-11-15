@@ -16,6 +16,11 @@ def watch(uuid: str, season: int, number: int, when: dt.datetime) -> None:
     db.add_episode_watch(ALICE, ep(uuid, season, number), when=when)
 
 
+def iso(when: dt.datetime) -> str:
+    """Horodatage tel que l'API le renvoie (à la seconde)."""
+    return when.strftime("%Y-%m-%dT%H:%M:%S")
+
+
 def day(offset: int) -> str:
     return (dt.date.today() + dt.timedelta(days=offset)).isoformat()
 
@@ -23,9 +28,10 @@ def day(offset: int) -> str:
 def test_progress_counts_only_regular_episodes(client, sql):
     uuid = make_series(seasons={0: 2, 1: 3, 2: 2})
     sql("UPDATE episodes SET special=1 WHERE id=?", (ep(uuid, 2, 2),))  # spécial en saison régulière
+    first, again = ago(days=30), ago(days=20)
     watch(uuid, 0, 1, ago(days=40))
-    watch(uuid, 1, 1, ago(days=30))
-    watch(uuid, 1, 1, ago(days=20))  # revu : compte comme activité, pas comme progression
+    watch(uuid, 1, 1, first)
+    watch(uuid, 1, 1, again)  # revu : compte comme activité, pas comme progression
 
     s = summary(client, uuid)
     assert (s["n_watched"], s["n_episodes"]) == (1, 4)
@@ -34,8 +40,8 @@ def test_progress_counts_only_regular_episodes(client, sql):
     assert s["times_watched"] == 0
     assert s["next_episode"]["season"] == 1 and s["next_episode"]["number"] == 2
     assert s["next_episode"]["episode_id"] == ep(uuid, 1, 2)
-    assert s["last_watched"] == ago(days=30).strftime("%Y-%m-%dT%H:%M:%S")
-    assert s["last_activity"] == ago(days=20).strftime("%Y-%m-%dT%H:%M:%S")
+    assert s["last_watched"] == iso(first)
+    assert s["last_activity"] == iso(again)
     assert s["recent"] is False and s["waiting"] is False and s["rewatch"] is None
 
     detail = client.get(f"/api/series/{uuid}").json()
@@ -134,8 +140,9 @@ def test_watch_time_and_overview(client):
     watch(uuid, 1, 1, ago(days=5))
     movie = db.add_movie_from_tmdb(ALICE, 500, "Film", 2020, runtime=100)
     unknown = db.add_movie_from_tmdb(ALICE, 501, "Sans durée", 2021)  # durée de repli : 110 min
-    db.add_movie_watch(ALICE, movie, when=ago(days=20))
-    db.add_movie_watch(ALICE, unknown, when=ago(days=1))
+    oldest, latest = ago(days=20), ago(days=1)
+    db.add_movie_watch(ALICE, movie, when=oldest)
+    db.add_movie_watch(ALICE, unknown, when=latest)
     db.add_movie_from_tmdb(ALICE, 502, "Jamais vu", 2022, runtime=90)
 
     wt = client.get("/api/stats/watch-time").json()
@@ -145,8 +152,7 @@ def test_watch_time_and_overview(client):
 
     assert client.get("/api/stats/overview").json() == {
         "n_movies": 2, "n_episodes": 1, "n_series": 1, "total_rewatch": 1,
-        "span_start": ago(days=20).strftime("%Y-%m-%dT%H:%M:%S"),
-        "span_end": ago(days=1).strftime("%Y-%m-%dT%H:%M:%S"),
+        "span_start": iso(oldest), "span_end": iso(latest),
     }
 
 
