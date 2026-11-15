@@ -29,7 +29,7 @@ git switch develop
 # Publier une version en prod
 git switch prod
 git merge develop
-git push origin prod       # déclenche le déploiement (pull côté serveur)
+git push origin prod       # déclenche le déploiement automatique (voir § 5)
 git switch develop
 ```
 
@@ -88,14 +88,52 @@ git push origin prod
    .venv/bin/python scripts/manage_users.py invite --email ami@gmail.com
    ```
 
-## 5. Redéployer une mise à jour
+## 5. Redéployer une mise à jour (automatique)
+
+Un push sur `prod` suffit : GitHub Actions s'occupe du reste, en moins d'une minute.
+
+| Fichier | Déclencheur | Rôle |
+|---|---|---|
+| `.github/workflows/ci.yml` | push sur `develop`, pull request | tests du back (`pytest`), types et build du front |
+| `.github/workflows/deploy.yml` | push sur `prod` (ou bouton *Run workflow*) | déploiement |
+
+Étapes du déploiement, dans l'ordre — la première qui échoue arrête tout :
+
+1. tests du back, puis build du front (sur la machine de GitHub : pas de build sur le serveur) ;
+2. `git pull --ff-only origin prod` et `pip install -r requirements-prod.txt` sur AlwaysData, en SSH ;
+3. envoi de `frontend/dist/` par `rsync` ;
+4. redémarrage du site par l'API d'AlwaysData ;
+5. contrôle : `/api/version` doit renvoyer le commit qui vient d'être poussé.
+
+Suivi et relance : onglet **Actions** du dépôt (*Re-run failed jobs* pour rejouer un échec).
+Un échec à l'étape 1 n'a rien modifié en prod ; un échec plus tardif peut laisser le serveur
+à moitié mis à jour — relancer le run suffit.
+
+Secrets à déclarer dans GitHub (*Settings → Secrets and variables → Actions*) :
+
+| Secret | Contenu |
+|---|---|
+| `SSH_HOST` | `ssh-<compte>.alwaysdata.net` |
+| `SSH_USER` | le compte SSH AlwaysData |
+| `SSH_PRIVATE_KEY` | clé privée **dédiée au déploiement** (sa clé publique est dans `~/.ssh/authorized_keys` du serveur) |
+| `SSH_KNOWN_HOSTS` | sortie de `ssh-keyscan ssh-<compte>.alwaysdata.net` (lignes sans `#`) |
+| `ALWAYSDATA_API_TOKEN` | jeton d'API (admin AlwaysData → profil → tokens) |
+| `ALWAYSDATA_SITE_ID` | identifiant du site (`curl --basic --user "<jeton>:" https://api.alwaysdata.com/v1/site/`) |
+
+> Le redémarrage passe par l'API et non par SSH : le processus uvicorn du site n'est pas
+> visible depuis une session SSH (`pkill` n'a aucun effet).
+
+En cas de fuite de la clé ou du jeton : les révoquer côté AlwaysData, en recréer, mettre à
+jour le secret correspondant.
+
+**Dépannage manuel** (si GitHub Actions est indisponible) :
 
 ```bash
-ssh <compte>@ssh-<compte>.alwaysdata.net
-cd ~/tvtime
-git pull origin prod
-.venv/bin/pip install -r requirements-prod.txt        # si deps changées
-cd frontend && npm ci && npm run build && cd ..        # si le front a changé
+# sur ta machine
+cd frontend && npm ci && npm run build && cd ..
+rsync -az --delete frontend/dist/ <compte>@ssh-<compte>.alwaysdata.net:tvtime/frontend/dist/
+# sur le serveur
+cd ~/tvtime && git pull --ff-only origin prod && .venv/bin/pip install -r requirements-prod.txt
 # puis « Redémarrer » le site depuis l'admin AlwaysData
 ```
 

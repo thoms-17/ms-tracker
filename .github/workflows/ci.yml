@@ -2,15 +2,15 @@ name: CI
 
 on:
   push:
-    branches: [develop, prod]
+    branches: [develop]   # sur prod, deploy.yml rejoue déjà les tests et le build
   pull_request:
 
 jobs:
   back:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - run: pip install -r requirements-prod.txt pytest
@@ -22,8 +22,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - run: npm ci
