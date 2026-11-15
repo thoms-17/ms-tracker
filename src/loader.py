@@ -1,6 +1,10 @@
-"""Mise en forme des données de visionnage lues en base.
+"""Jeu de données complet d'un utilisateur, en DataFrames pandas.
 
-Structures partagées par l'API et les stats :
+Réservé à l'analyse hors-ligne (src/models : clustering, prévisions…). L'API ne
+passe PAS par ici : elle lit la base en SQL (src/db/queries.py), sans pandas, ce
+qui allège sa mémoire et son démarrage.
+
+Structures :
     - Dataset          : movies / episodes / series / events
     - watch_events_df  : une ligne par événement de visionnage daté (films + épisodes),
                          colonne pivot pour toute l'analyse temporelle.
@@ -14,6 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pandas as pd
+
+from .db.connection import connect
 
 # Un groupe de N+ épisodes partageant exactement le même timestamp est
 # considéré comme un import de masse, pas comme un vrai visionnage temporel.
@@ -69,3 +75,93 @@ class Dataset:
     episodes: pd.DataFrame
     series: pd.DataFrame
     events: pd.DataFrame
+
+
+def load_dataset(user_id: int) -> Dataset:
+    """Reconstitue movies/episodes/series/events depuis la base, pour un utilisateur donné."""
+    with connect() as conn:
+        movies = pd.read_sql_query(
+            """
+            SELECT m.uuid, m.title, m.year, m.imdb_id, m.tvdb_id, m.tmdb_id, m.is_favorite, m.runtime,
+                   m.poster_path, m.created_at, COUNT(w.id) AS watched_count, MIN(w.watched_at) AS watched_at
+            FROM movies m LEFT JOIN watches w ON w.movie_uuid = m.uuid
+            WHERE m.user_id = ?
+            GROUP BY m.uuid
+            """,
+            conn, params=(user_id,),
+        )
+        episodes = pd.read_sql_query(
+            """
+            SELECT e.id AS episode_id, e.series_uuid, s.title AS series_title, s.status,
+                   e.season_number, e.is_specials, e.episode_number, e.name AS episode_name,
+                   e.special, e.imdb_id, e.tvdb_id, e.runtime, e.air_date,
+                   COUNT(w.id) AS watched_count, MIN(w.watched_at) AS watched_at,
+                   MAX(w.watched_at) AS last_watch_at
+            FROM episodes e
+            JOIN series s ON s.series_uuid = e.series_uuid
+            LEFT JOIN watches w ON w.episode_id = e.id
+            WHERE s.user_id = ?
+            GROUP BY e.id
+            """,
+            conn, params=(user_id,),
+        )
+        series_base = pd.read_sql_query(
+            "SELECT series_uuid, title AS series_title, status, is_favorite, imdb_id, tvdb_id, tmdb_id, "
+            "poster_path, created_at, rewatch_dismissed_at FROM series WHERE user_id = ?",
+            conn, params=(user_id,),
+        )
+
+    movies["watched_at"] = _to_datetime(movies["watched_at"])
+    movies["created_at"] = _to_datetime(movies["created_at"])
+    movies["is_watched"] = movies["watched_count"] > 0
+    movies["is_favorite"] = movies["is_favorite"].astype(bool)
+    movies["rewatch_count"] = (movies["watched_count"] - 1).clip(lower=0)
+    movies["media_type"] = "movie"
+
+    episodes["watched_at"] = _to_datetime(episodes["watched_at"])
+    episodes["last_watch_at"] = _to_datetime(episodes["last_watch_at"])
+    episodes["is_watched"] = episodes["watched_count"] > 0
+    episodes["rewatch_count"] = (episodes["watched_count"] - 1).clip(lower=0)
+    for col in ["is_specials", "special"]:
+        episodes[col] = episodes[col].astype(bool)
+    episodes = _mark_bulk_imports(episodes)
+
+    series_base["created_at"] = _to_datetime(series_base["created_at"])
+    series_base["rewatch_dismissed_at"] = _to_datetime(series_base["rewatch_dismissed_at"])
+    series_base["is_favorite"] = series_base["is_favorite"].astype(bool)
+
+    series = _aggregate_series(series_base, episodes)
+    events = build_watch_events(movies, episodes)
+    return Dataset(movies=movies, episodes=episodes, series=series, events=events)
+
+
+def _aggregate_series(series_base: pd.DataFrame, episodes: pd.DataFrame) -> pd.DataFrame:
+    # La complétion ne compte que les épisodes "réguliers" : les spéciaux (saison 0 ou
+    # marqués special) restent visibles dans le détail mais ne remplissent pas la barre.
+    episodes["is_regular"] = (~episodes["special"]) & (episodes["season_number"] != 0)
+    reg = episodes[episodes["is_regular"]]
+    agg_reg = (
+        reg.groupby("series_uuid")
+        .agg(n_episodes=("is_watched", "size"), n_watched=("is_watched", "sum"))
+        .reset_index()
+    )
+    # L'activité (rewatch, premières/dernières dates) reste calculée sur tous les épisodes.
+    agg_all = (
+        episodes.groupby("series_uuid")
+        .agg(
+            total_rewatch=("rewatch_count", "sum"),
+            first_watched=("watched_at", "min"),
+            last_watched=("watched_at", "max"),
+            # tous visionnages confondus, revisionnages compris (« Revu » = activité)
+            last_activity=("last_watch_at", "max"),
+        )
+        .reset_index()
+    )
+    series = series_base.merge(agg_reg, on="series_uuid", how="left").merge(agg_all, on="series_uuid", how="left")
+    series[["n_episodes", "n_watched", "total_rewatch"]] = series[
+        ["n_episodes", "n_watched", "total_rewatch"]
+    ].fillna(0)
+    series["completion_rate"] = (
+        series["n_watched"] / series["n_episodes"].where(series["n_episodes"] > 0)
+    ).fillna(0)
+    return series

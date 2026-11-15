@@ -11,7 +11,8 @@ import os
 
 import requests
 
-CACHE_DIR = os.path.join("data", "cache")
+# Chemin absolu (racine du projet) : ne dépend pas du répertoire de lancement.
+CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "cache")
 BASE = "https://api.themoviedb.org/3"
 
 

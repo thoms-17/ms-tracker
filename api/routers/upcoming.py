@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import datetime as dt
 
-import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, Depends
 
 from src import db, enrich
@@ -25,17 +24,15 @@ def _job_for(user_id: int) -> dict:
 
 @router.get("/upcoming", response_model=list[UpcomingItem])
 def upcoming(user_id: int = Uid):
-    df = db.upcoming_episodes(user_id)
     today = dt.date.today()
-    df = df[df["next_air_date"] >= today.isoformat()]
-    out = []
-    for r in df.itertuples():
-        d = pd.to_datetime(r.next_air_date).date()
-        out.append(UpcomingItem(
-            series_title=r.series_title, poster_path=(r.poster_path or None),
-            season=int(r.next_ep_season), number=int(r.next_ep_number),
-            name=(r.next_ep_name or None), air_date=r.next_air_date, days=(d - today).days))
-    return out
+    return [
+        UpcomingItem(
+            series_title=r["series_title"], poster_path=(r["poster_path"] or None),
+            season=r["next_ep_season"], number=r["next_ep_number"],
+            name=(r["next_ep_name"] or None), air_date=r["next_air_date"],
+            days=(dt.date.fromisoformat(r["next_air_date"][:10]) - today).days)
+        for r in db.upcoming_episodes(user_id, today.isoformat())
+    ]
 
 
 def _do_sync(user_id: int, key: str):
@@ -50,7 +47,6 @@ def _do_sync(user_id: int, key: str):
         job["result"] = res
     finally:
         job.update(running=False, progress=1.0)
-        deps.invalidate(user_id)
 
 
 def start_sync_job(background: BackgroundTasks, user_id: int) -> bool:
@@ -66,13 +62,13 @@ def start_sync_job(background: BackgroundTasks, user_id: int) -> bool:
 
 
 # Synchro automatique : au plus une fois par jour, déclenchée par l'ouverture de l'app.
-AUTO_SYNC_EVERY = pd.Timedelta(hours=24)
+AUTO_SYNC_EVERY = dt.timedelta(hours=24)
 # Après un échec (last_sync non mis à jour), on ne réessaie pas avant ce délai.
-AUTO_SYNC_RETRY = pd.Timedelta(hours=1)
+AUTO_SYNC_RETRY = dt.timedelta(hours=1)
 
 
-def _older_than(iso: str | None, delta: pd.Timedelta) -> bool:
-    return iso is None or pd.Timestamp.now() - pd.Timestamp(iso) >= delta
+def _older_than(iso: str | None, delta: dt.timedelta) -> bool:
+    return iso is None or dt.datetime.now() - dt.datetime.fromisoformat(iso) >= delta
 
 
 @router.post("/sync/auto")
@@ -88,7 +84,7 @@ def auto_sync(background: BackgroundTasks, user_id: int = Uid):
     if not (_older_than(db.get_meta(user_id, "last_sync"), AUTO_SYNC_EVERY)
             and _older_than(db.get_meta(user_id, "last_sync_attempt"), AUTO_SYNC_RETRY)):
         return {"running": False}
-    db.set_meta(user_id, "last_sync_attempt", pd.Timestamp.now().isoformat())
+    db.set_meta(user_id, "last_sync_attempt", dt.datetime.now().isoformat())
     return {"running": start_sync_job(background, user_id)}
 
 

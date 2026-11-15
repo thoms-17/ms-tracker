@@ -1,215 +1,220 @@
-"""Lectures : reconstruction des DataFrames d'analyse, lookups et couverture."""
+"""Lectures : listes de suivi, statistiques, lookups et couverture."""
 from __future__ import annotations
 
 import sqlite3
 
-import pandas as pd
-
-from .. import loader
-from .connection import get_conn
-from .schema import init_db
+from .connection import connect
 
 
-def load_dataset(user_id: int) -> loader.Dataset:
-    """Reconstitue movies/episodes/series/events depuis la base, pour un utilisateur donné."""
-    init_db()
-    conn = get_conn()
-
-    movies = pd.read_sql_query(
-        """
-        SELECT m.uuid, m.title, m.year, m.imdb_id, m.tvdb_id, m.tmdb_id, m.is_favorite, m.runtime,
-               m.poster_path, m.created_at, COUNT(w.id) AS watched_count, MIN(w.watched_at) AS watched_at
-        FROM movies m LEFT JOIN watches w ON w.movie_uuid = m.uuid
-        WHERE m.user_id = ?
-        GROUP BY m.uuid
-        """,
-        conn, params=(user_id,),
-    )
-    movies["watched_at"] = loader._to_datetime(movies["watched_at"])
-    movies["created_at"] = loader._to_datetime(movies["created_at"])
-    movies["is_watched"] = movies["watched_count"] > 0
-    movies["is_favorite"] = movies["is_favorite"].astype(bool)
-    movies["rewatch_count"] = (movies["watched_count"] - 1).clip(lower=0)
-    movies["media_type"] = "movie"
-
-    episodes = pd.read_sql_query(
-        """
-        SELECT e.id AS episode_id, e.series_uuid, s.title AS series_title, s.status,
-               e.season_number, e.is_specials, e.episode_number, e.name AS episode_name,
-               e.special, e.imdb_id, e.tvdb_id, e.runtime, e.air_date,
-               COUNT(w.id) AS watched_count, MIN(w.watched_at) AS watched_at,
-               MAX(w.watched_at) AS last_watch_at
-        FROM episodes e
-        JOIN series s ON s.series_uuid = e.series_uuid
-        LEFT JOIN watches w ON w.episode_id = e.id
-        WHERE s.user_id = ?
-        GROUP BY e.id
-        """,
-        conn, params=(user_id,),
-    )
-    episodes["watched_at"] = loader._to_datetime(episodes["watched_at"])
-    episodes["last_watch_at"] = loader._to_datetime(episodes["last_watch_at"])
-    episodes["is_watched"] = episodes["watched_count"] > 0
-    episodes["rewatch_count"] = (episodes["watched_count"] - 1).clip(lower=0)
-    for col in ["is_specials", "special"]:
-        episodes[col] = episodes[col].astype(bool)
-    episodes = loader._mark_bulk_imports(episodes)
-
-    series_base = pd.read_sql_query(
-        "SELECT series_uuid, title AS series_title, status, is_favorite, imdb_id, tvdb_id, tmdb_id, poster_path, created_at, "
-        "rewatch_dismissed_at "
-        "FROM series WHERE user_id = ?",
-        conn, params=(user_id,),
-    )
-    series_base["created_at"] = loader._to_datetime(series_base["created_at"])
-    series_base["rewatch_dismissed_at"] = loader._to_datetime(series_base["rewatch_dismissed_at"])
-    series_base["is_favorite"] = series_base["is_favorite"].astype(bool)
-    conn.close()
-
-    series = _aggregate_series(series_base, episodes)
-    events = loader.build_watch_events(movies, episodes)
-    return loader.Dataset(movies=movies, episodes=episodes, series=series, events=events)
+def _rows(conn: sqlite3.Connection, query: str, params: tuple = ()) -> list[sqlite3.Row]:
+    """Lignes accessibles par nom de colonne (``row["title"]``)."""
+    conn.row_factory = sqlite3.Row
+    return conn.execute(query, params).fetchall()
 
 
-def _aggregate_series(series_base: pd.DataFrame, episodes: pd.DataFrame) -> pd.DataFrame:
-    # La complétion ne compte que les épisodes "réguliers" : les spéciaux (saison 0 ou
-    # marqués special) restent visibles dans le détail mais ne remplissent pas la barre.
-    episodes["is_regular"] = (~episodes["special"]) & (episodes["season_number"] != 0)
-    reg = episodes[episodes["is_regular"]]
-    agg_reg = (
-        reg.groupby("series_uuid")
-        .agg(n_episodes=("is_watched", "size"), n_watched=("is_watched", "sum"))
-        .reset_index()
-    )
-    # L'activité (rewatch, premières/dernières dates) reste calculée sur tous les épisodes.
-    agg_all = (
-        episodes.groupby("series_uuid")
-        .agg(
-            total_rewatch=("rewatch_count", "sum"),
-            first_watched=("watched_at", "min"),
-            last_watched=("watched_at", "max"),
-            # tous visionnages confondus, revisionnages compris (« Revu » = activité)
-            last_activity=("last_watch_at", "max"),
+def tracked_series(user_id: int, series_uuid: str | None = None) -> list[sqlite3.Row]:
+    """Séries suivies par l'utilisateur (ou une seule), dans l'ordre d'ajout."""
+    with connect() as conn:
+        return _rows(
+            conn,
+            "SELECT series_uuid, title, status, tmdb_id, poster_path, rewatch_dismissed_at "
+            "FROM series WHERE user_id = ? AND (? IS NULL OR series_uuid = ?) ORDER BY rowid",
+            (user_id, series_uuid, series_uuid),
         )
-        .reset_index()
-    )
-    series = series_base.merge(agg_reg, on="series_uuid", how="left").merge(agg_all, on="series_uuid", how="left")
-    series[["n_episodes", "n_watched", "total_rewatch"]] = series[
-        ["n_episodes", "n_watched", "total_rewatch"]
-    ].fillna(0)
-    series["completion_rate"] = (
-        series["n_watched"] / series["n_episodes"].where(series["n_episodes"] > 0)
-    ).fillna(0)
-    return series
+
+
+def tracked_episodes(user_id: int, series_uuid: str | None = None) -> list[sqlite3.Row]:
+    """Épisodes des séries suivies (ou d'une seule), avec leurs visionnages.
+
+    Une ligne par épisode, dans l'ordre de diffusion de chaque série : `watched_count`,
+    `first_watch` (premier visionnage) et `last_watch` (dernier, revisionnages compris).
+    `special` vaut 1 pour un spécial, y compris rangé dans une saison régulière.
+    """
+    with connect() as conn:
+        return _rows(
+            conn,
+            """
+            SELECT e.series_uuid, e.id AS episode_id, e.season_number, e.episode_number, e.name,
+                   COALESCE(e.special, 0) AS special, e.air_date,
+                   COUNT(w.id) AS watched_count,
+                   MIN(w.watched_at) AS first_watch, MAX(w.watched_at) AS last_watch
+            FROM episodes e
+            JOIN series s ON s.series_uuid = e.series_uuid
+            LEFT JOIN watches w ON w.episode_id = e.id
+            WHERE s.user_id = ? AND (? IS NULL OR e.series_uuid = ?)
+            GROUP BY e.id
+            ORDER BY e.series_uuid, e.season_number, e.episode_number, e.id
+            """,
+            (user_id, series_uuid, series_uuid),
+        )
+
+
+def next_unwatched_episode(user_id: int, series_uuid: str) -> int | None:
+    """Premier épisode non vu (hors spéciaux) d'une série de l'utilisateur, ou None."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT e.id FROM episodes e JOIN series s ON s.series_uuid = e.series_uuid "
+            "WHERE e.series_uuid = ? AND s.user_id = ? AND COALESCE(e.special, 0) = 0 "
+            "AND NOT EXISTS (SELECT 1 FROM watches w WHERE w.episode_id = e.id) "
+            "ORDER BY e.season_number, e.episode_number, e.id LIMIT 1",
+            (series_uuid, user_id),
+        ).fetchone()
+    return row[0] if row else None
+
+
+def watched_movies(user_id: int) -> list[sqlite3.Row]:
+    """Films vus au moins une fois, du plus récemment découvert au plus ancien.
+
+    `first_watch` est le premier visionnage : revoir un film ne le fait pas remonter.
+    """
+    with connect() as conn:
+        return _rows(
+            conn,
+            """
+            SELECT m.uuid, m.title, m.year, m.tmdb_id, m.poster_path,
+                   COUNT(w.id) AS watched_count, MIN(w.watched_at) AS first_watch
+            FROM movies m JOIN watches w ON w.movie_uuid = m.uuid
+            WHERE m.user_id = ?
+            GROUP BY m.uuid
+            ORDER BY first_watch DESC, m.rowid
+            """,
+            (user_id,),
+        )
+
+
+def watch_minutes(user_id: int, episode_default: int, movie_default: int) -> dict:
+    """Minutes vues (revisionnages inclus) et couverture des durées connues.
+
+    Un titre sans durée compte pour `episode_default` / `movie_default` minutes.
+    Renvoie {'series_min', 'movie_min', 'titles', 'known'} — `titles` : épisodes et
+    films vus au moins une fois ; `known` : ceux dont la durée est réelle.
+    """
+    with connect() as conn:
+        series_min, ep_titles, ep_known = conn.execute(
+            "SELECT COALESCE(SUM(COALESCE(e.runtime, ?)), 0), COUNT(DISTINCT e.id), "
+            "       COUNT(DISTINCT CASE WHEN e.runtime IS NOT NULL THEN e.id END) "
+            "FROM watches w JOIN episodes e ON e.id = w.episode_id "
+            "JOIN series s ON s.series_uuid = e.series_uuid WHERE s.user_id = ?",
+            (episode_default, user_id),
+        ).fetchone()
+        movie_min, mv_titles, mv_known = conn.execute(
+            "SELECT COALESCE(SUM(COALESCE(m.runtime, ?)), 0), COUNT(DISTINCT m.uuid), "
+            "       COUNT(DISTINCT CASE WHEN m.runtime IS NOT NULL THEN m.uuid END) "
+            "FROM watches w JOIN movies m ON m.uuid = w.movie_uuid WHERE m.user_id = ?",
+            (movie_default, user_id),
+        ).fetchone()
+    return {"series_min": series_min, "movie_min": movie_min,
+            "titles": ep_titles + mv_titles, "known": ep_known + mv_known}
+
+
+def overview(user_id: int) -> dict:
+    """Chiffres clés : titres vus, revisionnages, période couverte.
+
+    La période va du premier au dernier titre **découvert** : un revisionnage
+    récent d'un vieux film ne la prolonge pas.
+    """
+    episodes = ("FROM watches w JOIN episodes e ON e.id = w.episode_id "
+                "JOIN series s ON s.series_uuid = e.series_uuid WHERE s.user_id = ?")
+    movies = "FROM watches w JOIN movies m ON m.uuid = w.movie_uuid WHERE m.user_id = ?"
+    with connect() as conn:
+        n_episodes, ep_watches = conn.execute(
+            f"SELECT COUNT(DISTINCT e.id), COUNT(*) {episodes}", (user_id,)).fetchone()
+        n_movies, mv_watches = conn.execute(
+            f"SELECT COUNT(DISTINCT m.uuid), COUNT(*) {movies}", (user_id,)).fetchone()
+        # séries dont au moins un épisode régulier est vu
+        n_series = conn.execute(
+            f"SELECT COUNT(DISTINCT e.series_uuid) {episodes} "
+            "AND COALESCE(e.special, 0) = 0 AND e.season_number != 0", (user_id,)).fetchone()[0]
+        span_start, span_end = conn.execute(
+            "SELECT MIN(first_watch), MAX(first_watch) FROM ("
+            f" SELECT MIN(w.watched_at) AS first_watch {episodes} GROUP BY e.id"
+            " UNION ALL"
+            f" SELECT MIN(w.watched_at) {movies} GROUP BY m.uuid)", (user_id, user_id)).fetchone()
+    return {"n_movies": n_movies, "n_episodes": n_episodes, "n_series": n_series,
+            "total_rewatch": (ep_watches - n_episodes) + (mv_watches - n_movies),
+            "span_start": span_start, "span_end": span_end}
 
 
 def get_user_id(username: str) -> int | None:
-    conn = get_conn()
-    row = conn.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
-    conn.close()
+    with connect() as conn:
+        row = conn.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
     return row[0] if row else None
 
 
 def get_username(user_id: int) -> str | None:
-    conn = get_conn()
-    row = conn.execute("SELECT username FROM users WHERE id=?", (user_id,)).fetchone()
-    conn.close()
+    with connect() as conn:
+        row = conn.execute("SELECT username FROM users WHERE id=?", (user_id,)).fetchone()
     return row[0] if row else None
 
 
-def get_series_episodes(user_id: int, series_uuid: str) -> pd.DataFrame:
-    """Épisodes d'une série (possédée par user_id) avec leur nombre de visionnages."""
-    conn = get_conn()
-    df = pd.read_sql_query(
-        """
-        SELECT e.id AS episode_id, e.season_number, e.episode_number, e.name AS episode_name,
-               e.special, e.is_specials, COUNT(w.id) AS watched_count, MIN(w.watched_at) AS first_watched
-        FROM episodes e
-        JOIN series s ON s.series_uuid = e.series_uuid
-        LEFT JOIN watches w ON w.episode_id = e.id
-        WHERE e.series_uuid = ? AND s.user_id = ?
-        GROUP BY e.id
-        ORDER BY e.season_number, e.episode_number
-        """,
-        conn, params=(series_uuid, user_id),
-    )
-    conn.close()
-    return df
-
-
 def series_uuid_by_tmdb(user_id: int, tmdb_id: int) -> str | None:
-    conn = get_conn()
-    row = conn.execute(
-        "SELECT series_uuid FROM series WHERE tmdb_id=? AND user_id=?", (tmdb_id, user_id)
-    ).fetchone()
-    conn.close()
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT series_uuid FROM series WHERE tmdb_id=? AND user_id=?", (tmdb_id, user_id)
+        ).fetchone()
     return row[0] if row else None
 
 
 def movie_by_tmdb(user_id: int, tmdb_id: int) -> dict | None:
     """Film (de user_id) correspondant à un id TMDB, avec son nombre de visionnages, ou None."""
-    conn = get_conn()
-    row = conn.execute(
-        "SELECT m.uuid, COUNT(w.id) FROM movies m LEFT JOIN watches w ON w.movie_uuid = m.uuid "
-        "WHERE m.tmdb_id=? AND m.user_id=? GROUP BY m.uuid", (tmdb_id, user_id),
-    ).fetchone()
-    conn.close()
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT m.uuid, COUNT(w.id) FROM movies m LEFT JOIN watches w ON w.movie_uuid = m.uuid "
+            "WHERE m.tmdb_id=? AND m.user_id=? GROUP BY m.uuid", (tmdb_id, user_id),
+        ).fetchone()
     return {"uuid": row[0], "watched_count": row[1]} if row else None
 
 
 def episode_id_of(user_id: int, series_uuid: str, season: int, number: int) -> int | None:
-    conn = get_conn()
-    row = conn.execute(
-        "SELECT e.id FROM episodes e JOIN series s ON s.series_uuid = e.series_uuid "
-        "WHERE e.series_uuid=? AND e.season_number=? AND e.episode_number=? AND s.user_id=? LIMIT 1",
-        (series_uuid, season, number, user_id),
-    ).fetchone()
-    conn.close()
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT e.id FROM episodes e JOIN series s ON s.series_uuid = e.series_uuid "
+            "WHERE e.series_uuid=? AND e.season_number=? AND e.episode_number=? AND s.user_id=? LIMIT 1",
+            (series_uuid, season, number, user_id),
+        ).fetchone()
     return row[0] if row else None
 
 
 def runtime_coverage(user_id: int) -> dict:
     """Combien de titres/épisodes de l'utilisateur ont déjà une durée connue."""
-    conn = get_conn()
-    ep_total, ep_known = conn.execute(
-        "SELECT COUNT(*), COUNT(e.runtime) FROM episodes e "
-        "JOIN series s ON s.series_uuid = e.series_uuid WHERE s.user_id=?", (user_id,)
-    ).fetchone()
-    mv_total, mv_known = conn.execute(
-        "SELECT COUNT(*), COUNT(runtime) FROM movies WHERE user_id=?", (user_id,)
-    ).fetchone()
-    conn.close()
+    with connect() as conn:
+        ep_total, ep_known = conn.execute(
+            "SELECT COUNT(*), COUNT(e.runtime) FROM episodes e "
+            "JOIN series s ON s.series_uuid = e.series_uuid WHERE s.user_id=?", (user_id,)
+        ).fetchone()
+        mv_total, mv_known = conn.execute(
+            "SELECT COUNT(*), COUNT(runtime) FROM movies WHERE user_id=?", (user_id,)
+        ).fetchone()
     return {"ep_total": ep_total, "ep_known": ep_known, "mv_total": mv_total, "mv_known": mv_known}
 
 
 def get_meta(user_id: int, key: str) -> str | None:
-    conn = get_conn()
-    row = conn.execute("SELECT value FROM meta WHERE user_id=? AND key=?", (user_id, key)).fetchone()
-    conn.close()
+    with connect() as conn:
+        row = conn.execute("SELECT value FROM meta WHERE user_id=? AND key=?", (user_id, key)).fetchone()
     return row[0] if row else None
 
 
-def upcoming_episodes(user_id: int) -> pd.DataFrame:
-    """Séries (de user_id) ayant un prochain épisode annoncé (date TMDB), triées par date."""
-    conn = get_conn()
-    df = pd.read_sql_query(
-        "SELECT title AS series_title, poster_path, tmdb_status, next_air_date, "
-        "next_ep_season, next_ep_number, next_ep_name "
-        "FROM series WHERE user_id=? AND next_air_date IS NOT NULL AND next_air_date != '' "
-        "ORDER BY next_air_date",
-        conn, params=(user_id,),
-    )
-    conn.close()
-    return df
+def upcoming_episodes(user_id: int, since: str) -> list[sqlite3.Row]:
+    """Séries (de user_id) dont le prochain épisode sort le jour `since` ('AAAA-MM-JJ')
+    ou après, triées par date."""
+    with connect() as conn:
+        return _rows(
+            conn,
+            "SELECT title AS series_title, poster_path, next_air_date, "
+            "next_ep_season, next_ep_number, next_ep_name "
+            "FROM series WHERE user_id=? AND next_air_date >= ? AND next_air_date != '' "
+            "ORDER BY next_air_date, rowid",
+            (user_id, since),
+        )
 
 
 def image_coverage(user_id: int) -> dict:
-    conn = get_conn()
-    s_tot = conn.execute("SELECT COUNT(*) FROM series WHERE user_id=?", (user_id,)).fetchone()[0]
-    s_img = conn.execute("SELECT COUNT(*) FROM series WHERE user_id=? AND poster_path IS NOT NULL AND poster_path != ''", (user_id,)).fetchone()[0]
-    m_tot = conn.execute("SELECT COUNT(*) FROM movies WHERE user_id=?", (user_id,)).fetchone()[0]
-    m_img = conn.execute("SELECT COUNT(*) FROM movies WHERE user_id=? AND poster_path IS NOT NULL AND poster_path != ''", (user_id,)).fetchone()[0]
-    conn.close()
+    has_poster = "poster_path IS NOT NULL AND poster_path != ''"
+    with connect() as conn:
+        s_tot, s_img = conn.execute(
+            f"SELECT COUNT(*), COALESCE(SUM({has_poster}), 0) FROM series WHERE user_id=?", (user_id,)).fetchone()
+        m_tot, m_img = conn.execute(
+            f"SELECT COUNT(*), COALESCE(SUM({has_poster}), 0) FROM movies WHERE user_id=?", (user_id,)).fetchone()
     return {"s_total": s_tot, "s_img": s_img, "m_total": m_tot, "m_img": m_img}
 
 
@@ -219,26 +224,23 @@ def recent_watches(user_id: int, limit: int = 20) -> list[dict]:
     Le tri se fait sur `watches.id` (ordre d'insertion) et non sur `watched_at` :
     l'import TV Time a attribué la même date à des centaines d'épisodes, si bien
     qu'un tri par date ferait remonter ce bloc plutôt que les gestes récents.
-
-    Requête directe, sans passer par le Dataset : on ne lit que quelques lignes.
     """
-    conn = get_conn()
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        """
-        SELECT w.target_type, w.watched_at,
-               s.series_uuid, s.title AS series_title, s.poster_path AS series_poster,
-               e.season_number, e.episode_number, e.name AS episode_name,
-               m.uuid AS movie_uuid, m.title AS movie_title, m.poster_path AS movie_poster
-        FROM watches w
-        LEFT JOIN episodes e ON e.id = w.episode_id
-        LEFT JOIN series   s ON s.series_uuid = e.series_uuid
-        LEFT JOIN movies   m ON m.uuid = w.movie_uuid
-        WHERE s.user_id = ? OR m.user_id = ?
-        ORDER BY w.id DESC
-        LIMIT ?
-        """,
-        (user_id, user_id, limit),
-    ).fetchall()
-    conn.close()
+    with connect() as conn:
+        rows = _rows(
+            conn,
+            """
+            SELECT w.target_type, w.watched_at,
+                   s.series_uuid, s.title AS series_title, s.poster_path AS series_poster,
+                   e.season_number, e.episode_number, e.name AS episode_name,
+                   m.uuid AS movie_uuid, m.title AS movie_title, m.poster_path AS movie_poster
+            FROM watches w
+            LEFT JOIN episodes e ON e.id = w.episode_id
+            LEFT JOIN series   s ON s.series_uuid = e.series_uuid
+            LEFT JOIN movies   m ON m.uuid = w.movie_uuid
+            WHERE s.user_id = ? OR m.user_id = ?
+            ORDER BY w.id DESC
+            LIMIT ?
+            """,
+            (user_id, user_id, limit),
+        )
     return [dict(r) for r in rows]

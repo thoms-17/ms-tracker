@@ -13,7 +13,7 @@ Aucun secret dans git.
 | Emails | console (pas de SMTP) | SMTP réel |
 | Base | `./data/tvtime.db` | `TVTIME_DB_PATH` = chemin **absolu** persistant |
 
-> ⚠️ **Toujours 1 worker** (le défaut). L'état (cache dataset, job de synchro, rate-limit)
+> ⚠️ **Toujours 1 worker** (le défaut). L'état (job de synchro, rate-limit)
 > vit en mémoire du process : plusieurs workers = incohérences.
 
 ## 2. Workflow des branches

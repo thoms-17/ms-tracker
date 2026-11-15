@@ -3,12 +3,13 @@
 Dev  :  uvicorn api.main:app --reload --port 8000   (le front est servi par Vite)
 Prod :  uvicorn api.main:app --port $PORT           (sert AUSSI le build React ci-dessous)
 
-⚠️ TOUJOURS lancer avec **UN SEUL worker** : l'état (cache dataset, job de synchro,
-rate-limit) vit en mémoire du process. Plusieurs workers = incohérences.
+⚠️ TOUJOURS lancer avec **UN SEUL worker** : l'état (job de synchro, rate-limit) vit
+en mémoire du process. Plusieurs workers = incohérences.
 """
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 # Charge le .env (racine du projet) AVANT que les modules ne lisent les variables d'env.
@@ -57,10 +58,19 @@ def _read_git_sha() -> str:
 APP_VERSION = _read_version()
 GIT_SHA = _read_git_sha()
 
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.init_db()  # crée/migre la base au démarrage
+    yield
+
+
 app = FastAPI(
     title="MS Tracker API",
     version=APP_VERSION,
     description="API multi-utilisateur du suivi de visionnage (back du front React).",
+    lifespan=lifespan,
 )
 
 # CORS : inutile en même origine (dev via proxy Vite, prod via front servi ici).
@@ -86,11 +96,6 @@ app.include_router(stats.router, prefix="/api")
 def _not_owned(request: Request, exc: db.NotOwned):
     # Ressource inexistante pour le user courant : 404 (on ne révèle pas celle d'un autre).
     return JSONResponse(status_code=404, content={"detail": "Ressource introuvable"})
-
-
-@app.on_event("startup")
-def _startup():
-    db.init_db()  # crée/migre la base au démarrage
 
 
 @app.get("/api/health")

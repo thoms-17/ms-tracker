@@ -95,7 +95,6 @@ def track_series(tmdb_id: int, body: TrackRequest | None = None, user_id: int = 
             db.catch_up_episode(user_id, ep_id)
         elif ep_id:
             db.add_episode_watch(user_id, ep_id)
-    deps.invalidate(user_id)
     return UuidResponse(uuid=uuid)
 
 
@@ -124,5 +123,4 @@ def watch_movie_from_tmdb(tmdb_id: int, user_id: int = Uid):
     uuid = db.add_movie_from_tmdb(user_id, tmdb_id, meta.get("title"), meta.get("year"),
                                   poster_path=meta.get("poster_path"), runtime=meta.get("runtime"))
     db.add_movie_watch(user_id, uuid)
-    deps.invalidate(user_id)
     return UuidResponse(uuid=uuid)

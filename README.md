@@ -46,8 +46,10 @@ Toutes les analyses lisent la même base : marquer un épisode met à jour les s
 - **Source de vérité** : base SQLite `data/tvtime.db`, créée au premier lancement.
   Les titres sont ajoutés depuis la recherche TMDB.
 - **Modèle** : chaque visionnage est une ligne dans la table `watches` → les revisionnages
-  illimités et leur historique sont natifs. `src/db.py` reconstitue les DataFrames d'analyse
-  et expose les mutations (marquer vu, +1 revu, ajouter un titre…).
+  illimités et leur historique sont natifs. Le package `src/db/` expose les lectures (SQL)
+  et les mutations (marquer vu, +1 revu, ajouter un titre…).
+- **API sans pandas** : l'API lit la base directement en SQL. pandas ne sert qu'à l'analyse
+  hors-ligne (`src/loader.py`, `src/models/`) et n'est pas installé en production.
 
 ## Installation
 
@@ -64,6 +66,7 @@ make install          # venv + dépendances back, puis npm install côté front
 
 ```bash
 make dev              # API (:8000) + front React (:5173)
+make test             # tests du back (base SQLite jetable, aucun appel réseau)
 ```
 
 Voir **[DEPLOY.md](DEPLOY.md)** pour la mise en production (AlwaysData) et le workflow des branches.
@@ -84,21 +87,23 @@ Séparation claire back / front, posés sur un cœur métier Python sans dépend
 ```
 api/                 # Back FastAPI (uvicorn api.main:app)
   main.py            #   app, CORS, montage des routeurs
-  deps.py            #   dataset mis en cache (+ invalidate après écriture)
+  deps.py            #   utilisateur courant (cookie de session)
   schemas.py         #   modèles Pydantic (contrat typé → OpenAPI)
-  serializers.py     #   DataFrames → schémas
+  serializers.py     #   lignes SQL → schémas (progression, épisode suivant, revisionnage)
   routers/           #   tracking · discover · upcoming · stats
 frontend/            # Front React + TypeScript (Vite)
   src/api.ts         #   client typé de l'API
+  src/watch.ts       #   mutation de visionnage optimiste (partagée par tous les boutons)
   src/pages/         #   Suivi, SeriesDetail, SeriesPreview, MoviePreview
   src/components/    #   SearchBar (recherche à la frappe)
 src/                 # Cœur métier (aucune dépendance framework UI)
-  loader.py          #   structures Dataset + événements de visionnage
+  loader.py          #   jeu de données en DataFrames (analyse hors-ligne uniquement)
   stats.py           #   calcul du temps de visionnage
   db/                #   base SQLite : connection · schema · queries · mutations · tmdb
   enrich/            #   client TMDB : client · api · library
   models/            #   ML : forecast · completion · clustering (exposés via l'API à venir)
-Makefile             # make dev / api / front / install / build
+tests/               # tests du back (pytest) : mutations, listes, comptes, synchro
+Makefile             # make dev / api / front / install / build / test
 data/tvtime.db       # base (générée au 1er lancement, WAL)
 data/cache/          # cache TMDB (généré)
 ```

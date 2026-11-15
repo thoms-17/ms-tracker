@@ -32,7 +32,7 @@ except ModuleNotFoundError:
     pass
 
 from src import db  # noqa: E402
-from src.db.connection import get_conn  # noqa: E402
+from src.db.connection import connect  # noqa: E402
 
 
 def _gen_password() -> str:
@@ -40,13 +40,11 @@ def _gen_password() -> str:
 
 
 def cmd_create(args):
-    conn = get_conn()
-    existing = conn.execute("SELECT id FROM users WHERE username=?", (args.username,)).fetchone()
-    if existing:
-        conn.close()
-        sys.exit(f"⚠️  L'utilisateur « {args.username} » existe déjà (id {existing[0]}).")
-    uid = db.get_or_create_user(conn, args.username)
-    conn.commit(); conn.close()
+    existing = db.get_user_id(args.username)
+    if existing is not None:
+        sys.exit(f"⚠️  L'utilisateur « {args.username} » existe déjà (id {existing}).")
+    with connect() as conn:
+        uid = db.get_or_create_user(conn, args.username)
     pw = args.password or _gen_password()
     db.set_password(uid, pw)
     print(f"✅ Compte créé : {args.username} (id {uid})")

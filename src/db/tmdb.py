@@ -1,63 +1,65 @@
-"""Ajout de titres via TMDB et synchronisation des durées / affiches."""
+"""Ajout de titres via TMDB et synchronisation des durées / affiches.
+
+Règle des synchros : jamais d'appel TMDB pendant qu'une écriture est en attente de
+commit. SQLite n'accepte qu'un écrivain à la fois ; une transaction gardée ouverte
+pendant des appels réseau ferait échouer les visionnages cochés entre-temps
+(« database is locked »). D'où les appels réseau d'abord, puis un commit par titre.
+"""
 from __future__ import annotations
 
+import datetime as dt
 import uuid as uuidlib
 
-import pandas as pd
-
 from .. import enrich
-from .connection import fmt, get_conn
+from .connection import connect, now
+from .mutations import set_meta
 from .queries import image_coverage, runtime_coverage
 
 
 def add_series_from_tmdb(user_id: int, tmdb_id: int, title: str, seasons: list[dict],
                          status: str = "continuing", poster_path: str | None = None) -> str:
     """seasons : [{'season_number': n, 'episodes': [{'episode_number','name','runtime'}...]}, ...]"""
-    conn = get_conn()
-    existing = conn.execute(
-        "SELECT series_uuid FROM series WHERE tmdb_id=? AND user_id=?", (tmdb_id, user_id)
-    ).fetchone()
-    if existing:
-        conn.close(); return existing[0]
-    su = str(uuidlib.uuid4())
-    conn.execute(
-        "INSERT INTO series(series_uuid,user_id,title,status,tmdb_id,poster_path,created_at,source) "
-        "VALUES (?,?,?,?,?,?,?, 'manual')",
-        (su, user_id, title, status, tmdb_id, poster_path or "", fmt(pd.Timestamp.now())),
-    )
-    for season in seasons:
-        sn = season["season_number"]
-        for ep in season["episodes"]:
-            conn.execute(
-                "INSERT OR IGNORE INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime,air_date)"
-                " VALUES (?,?,?,?,?,?,?,?)",
-                (su, sn, ep["episode_number"], ep.get("name"), int(sn == 0), int(sn == 0), ep.get("runtime"),
-                 ep.get("air_date")),
-            )
-    # Repli médiane pour d'éventuels épisodes sans durée (comme pour la synchro globale)
-    vals = sorted(ep.get("runtime") for s in seasons for ep in s["episodes"] if ep.get("runtime"))
-    if vals:
-        conn.execute("UPDATE episodes SET runtime=? WHERE series_uuid=? AND runtime IS NULL",
-                     (vals[len(vals) // 2], su))
-    conn.commit(); conn.close()
+    with connect() as conn:
+        existing = conn.execute(
+            "SELECT series_uuid FROM series WHERE tmdb_id=? AND user_id=?", (tmdb_id, user_id)
+        ).fetchone()
+        if existing:
+            return existing[0]
+        su = str(uuidlib.uuid4())
+        conn.execute(
+            "INSERT INTO series(series_uuid,user_id,title,status,tmdb_id,poster_path,created_at,source) "
+            "VALUES (?,?,?,?,?,?,?, 'manual')",
+            (su, user_id, title, status, tmdb_id, poster_path or "", now()),
+        )
+        conn.executemany(
+            "INSERT OR IGNORE INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime,air_date)"
+            " VALUES (?,?,?,?,?,?,?,?)",
+            [(su, s["season_number"], ep["episode_number"], ep.get("name"),
+              int(s["season_number"] == 0), int(s["season_number"] == 0), ep.get("runtime"), ep.get("air_date"))
+             for s in seasons for ep in s["episodes"]],
+        )
+        # Repli médiane pour d'éventuels épisodes sans durée (comme pour la synchro globale)
+        vals = sorted(ep.get("runtime") for s in seasons for ep in s["episodes"] if ep.get("runtime"))
+        if vals:
+            conn.execute("UPDATE episodes SET runtime=? WHERE series_uuid=? AND runtime IS NULL",
+                         (vals[len(vals) // 2], su))
     return su
 
 
 def add_movie_from_tmdb(user_id: int, tmdb_id: int, title: str, year: int | None,
                         poster_path: str | None = None, runtime: int | None = None) -> str:
-    conn = get_conn()
-    existing = conn.execute(
-        "SELECT uuid FROM movies WHERE tmdb_id=? AND user_id=?", (tmdb_id, user_id)
-    ).fetchone()
-    if existing:
-        conn.close(); return existing[0]
-    mu = str(uuidlib.uuid4())
-    conn.execute(
-        "INSERT INTO movies(uuid,user_id,title,year,tmdb_id,poster_path,runtime,created_at,source) "
-        "VALUES (?,?,?,?,?,?,?,?, 'manual')",
-        (mu, user_id, title, year, tmdb_id, poster_path or "", runtime, fmt(pd.Timestamp.now())),
-    )
-    conn.commit(); conn.close()
+    with connect() as conn:
+        existing = conn.execute(
+            "SELECT uuid FROM movies WHERE tmdb_id=? AND user_id=?", (tmdb_id, user_id)
+        ).fetchone()
+        if existing:
+            return existing[0]
+        mu = str(uuidlib.uuid4())
+        conn.execute(
+            "INSERT INTO movies(uuid,user_id,title,year,tmdb_id,poster_path,runtime,created_at,source) "
+            "VALUES (?,?,?,?,?,?,?,?, 'manual')",
+            (mu, user_id, title, year, tmdb_id, poster_path or "", runtime, now()),
+        )
     return mu
 
 
@@ -71,70 +73,69 @@ def refresh_series_from_tmdb(user_id: int, series_uuid: str, key: str) -> dict:
 
     Renvoie {'status': 'ok'|'unsafe'|'no_tmdb', 'added': int}.
     """
-    conn = get_conn()
-    row = conn.execute(
-        "SELECT tmdb_id FROM series WHERE series_uuid=? AND user_id=?", (series_uuid, user_id)
-    ).fetchone()
-    tmdb_id = row[0] if row else None
-    if not tmdb_id:
-        conn.close(); return {"status": "no_tmdb", "added": 0}
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT tmdb_id FROM series WHERE series_uuid=? AND user_id=?", (series_uuid, user_id)
+        ).fetchone()
+        tmdb_id = row[0] if row else None
+        if not tmdb_id:
+            return {"status": "no_tmdb", "added": 0}
 
-    # TV Time range parfois des spéciaux dans une saison régulière (For All Mankind S4 :
-    # 10 épisodes + 9 spéciaux). TMDB, lui, les ignore (For All Mankind) ou les compte
-    # comme épisodes normaux (Black Mirror S2E4 « Blanc comme neige ») : on tient donc
-    # les deux décomptes, sans quoi le verrou bloquerait la série pour toujours.
-    counts: dict[int, list[int]] = {}  # saison -> [réguliers, spéciaux]
-    existing: set[tuple[int, int]] = set()  # (saison, numéro) des épisodes réguliers
-    special_names: dict[int, set[str]] = {}
-    for sn, en, name, sp in conn.execute(
-        "SELECT season_number, episode_number, name, COALESCE(special, 0) FROM episodes WHERE series_uuid=?",
-        (series_uuid,),
-    ).fetchall():
-        c = counts.setdefault(sn, [0, 0])
-        if sp and sn != 0:
-            c[1] += 1
-            special_names.setdefault(sn, set()).add((name or "").strip().lower())
-        else:
-            c[0] += 1
-            existing.add((sn, en))
+        # TV Time range parfois des spéciaux dans une saison régulière (For All Mankind S4 :
+        # 10 épisodes + 9 spéciaux). TMDB, lui, les ignore (For All Mankind) ou les compte
+        # comme épisodes normaux (Black Mirror S2E4 « Blanc comme neige ») : on tient donc
+        # les deux décomptes, sans quoi le verrou bloquerait la série pour toujours.
+        counts: dict[int, list[int]] = {}  # saison -> [réguliers, spéciaux]
+        existing: set[tuple[int, int]] = set()  # (saison, numéro) des épisodes réguliers
+        special_names: dict[int, set[str]] = {}
+        for sn, en, name, sp in conn.execute(
+            "SELECT season_number, episode_number, name, COALESCE(special, 0) FROM episodes WHERE series_uuid=?",
+            (series_uuid,),
+        ).fetchall():
+            c = counts.setdefault(sn, [0, 0])
+            if sp and sn != 0:
+                c[1] += 1
+                special_names.setdefault(sn, set()).add((name or "").strip().lower())
+            else:
+                c[0] += 1
+                existing.add((sn, en))
 
-    tmdb_seasons = {s["season_number"]: s["episodes"]
-                    for s in enrich.fetch_tv_structure(tmdb_id, key)}
-    max_db_season = max((s for s in counts if s >= 1), default=0)
+        tmdb_seasons = {s["season_number"]: s["episodes"]
+                        for s in enrich.fetch_tv_structure(tmdb_id, key)}
+        max_db_season = max((s for s in counts if s >= 1), default=0)
 
-    # Verrou : les saisons passées doivent correspondre en nombre d'épisodes.
-    for s, (n, n_sp) in counts.items():
-        if s < 1:
-            continue
-        tmdb_n = len(tmdb_seasons.get(s, []))
-        if s not in tmdb_seasons or n > tmdb_n:
-            conn.close(); return {"status": "unsafe", "added": 0}
-        if s < max_db_season and tmdb_n not in (n, n + n_sp):
-            conn.close(); return {"status": "unsafe", "added": 0}
-
-    added = 0
-    for s, eps in tmdb_seasons.items():
-        # ni spéciaux (saison 0), ni trous dans les saisons passées : seulement la fin
-        # de la saison en cours et les saisons entièrement nouvelles
-        if s < 1 or s < max_db_season:
-            continue
-        n, n_sp = counts.get(s, [0, 0])
-        if n_sp and len(eps) == n + n_sp:
-            continue  # les épisodes « en plus » de TMDB sont nos spéciaux, déjà là
-        for ep in eps:
-            en = ep["episode_number"]
-            if (s, en) in existing:
+        # Verrou : les saisons passées doivent correspondre en nombre d'épisodes.
+        for s, (n, n_sp) in counts.items():
+            if s < 1:
                 continue
-            if (ep.get("name") or "").strip().lower() in special_names.get(s, ()):
-                continue  # déjà présent comme spécial TV Time
-            conn.execute(
-                "INSERT INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime,air_date)"
-                " VALUES (?,?,?,?,0,0,?,?)",
-                (series_uuid, s, en, ep.get("name"), ep.get("runtime"), ep.get("air_date")),
-            )
-            added += 1
-        _store_air_dates(conn, series_uuid, s, eps)
-    conn.commit(); conn.close()
+            tmdb_n = len(tmdb_seasons.get(s, []))
+            if s not in tmdb_seasons or n > tmdb_n:
+                return {"status": "unsafe", "added": 0}
+            if s < max_db_season and tmdb_n not in (n, n + n_sp):
+                return {"status": "unsafe", "added": 0}
+
+        added = 0
+        for s, eps in tmdb_seasons.items():
+            # ni spéciaux (saison 0), ni trous dans les saisons passées : seulement la fin
+            # de la saison en cours et les saisons entièrement nouvelles
+            if s < 1 or s < max_db_season:
+                continue
+            n, n_sp = counts.get(s, [0, 0])
+            if n_sp and len(eps) == n + n_sp:
+                continue  # les épisodes « en plus » de TMDB sont nos spéciaux, déjà là
+            for ep in eps:
+                en = ep["episode_number"]
+                if (s, en) in existing:
+                    continue
+                if (ep.get("name") or "").strip().lower() in special_names.get(s, ()):
+                    continue  # déjà présent comme spécial TV Time
+                conn.execute(
+                    "INSERT INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime,air_date)"
+                    " VALUES (?,?,?,?,0,0,?,?)",
+                    (series_uuid, s, en, ep.get("name"), ep.get("runtime"), ep.get("air_date")),
+                )
+                added += 1
+            _store_air_dates(conn, series_uuid, s, eps)
     return {"status": "ok", "added": added}
 
 
@@ -170,8 +171,7 @@ def refresh_air_dates(conn, series_uuid: str, tmdb_id: int, tmdb_seasons: list[i
     ).fetchone()[0]
     if last is None:
         return
-    # Tous les appels TMDB d'abord, les écritures ensuite : une écriture ouvre une
-    # transaction, qui verrouillerait la base pendant les appels réseau suivants.
+    # Tous les appels TMDB d'abord, les écritures ensuite (voir l'en-tête du module).
     fetched = [(sn, enrich.fetch_season_episodes(tmdb_id, sn, key))
                for sn in sorted(s for s in tmdb_seasons if s >= last)]
     for sn, eps in fetched:
@@ -186,133 +186,113 @@ def sync_updates(user_id: int, key: str, progress=None) -> dict:
 
     Renvoie {'checked', 'series_with_new', 'episodes_added'}.
     """
-    conn = get_conn()
-    rows = conn.execute(
-        "SELECT series_uuid, tmdb_id FROM series WHERE tmdb_id IS NOT NULL AND user_id=?", (user_id,)
-    ).fetchall()
-    total = max(len(rows), 1)
     to_refresh = []
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT series_uuid, tmdb_id FROM series WHERE tmdb_id IS NOT NULL AND user_id=?", (user_id,)
+        ).fetchall()
+        total = max(len(rows), 1)
 
-    for i, (su, tmdb_id) in enumerate(rows):
-        upd = enrich.fetch_series_updates(tmdb_id, key)
-        ne = upd.get("next_episode_to_air") or {}
-        # Série encore en diffusion : dates de sortie de la saison en cours, pour
-        # masquer d'« En cours » une série à jour dont l'épisode suivant n'est pas sorti.
-        if upd.get("status") in LIVE_STATUSES or ne:
-            refresh_air_dates(conn, su, tmdb_id, upd.get("seasons") or [], key)
-        conn.execute(
-            "UPDATE series SET tmdb_status=?, next_air_date=?, next_ep_season=?, next_ep_number=?, next_ep_name=? "
-            "WHERE series_uuid=?",
-            (upd.get("status"), ne.get("air_date"), ne.get("season_number"),
-             ne.get("episode_number"), ne.get("name"), su),
-        )
-        # Un commit par série : SQLite n'accepte qu'un écrivain à la fois, et une
-        # transaction gardée ouverte pendant toute la passe ferait échouer les
-        # visionnages cochés entre-temps (« database is locked »).
-        conn.commit()
-        local_reg = conn.execute(
-            "SELECT COUNT(*) FROM episodes WHERE series_uuid=? AND season_number>=1", (su,)).fetchone()[0]
-        if (upd.get("number_of_episodes") or 0) > local_reg:
-            to_refresh.append(su)
-        if progress:
-            progress((i + 1) / total, f"{i + 1}/{len(rows)}")
-    conn.close()
+        for i, (su, tmdb_id) in enumerate(rows):
+            upd = enrich.fetch_series_updates(tmdb_id, key)
+            ne = upd.get("next_episode_to_air") or {}
+            # Série encore en diffusion : dates de sortie de la saison en cours, pour
+            # masquer d'« En cours » une série à jour dont l'épisode suivant n'est pas sorti.
+            if upd.get("status") in LIVE_STATUSES or ne:
+                refresh_air_dates(conn, su, tmdb_id, upd.get("seasons") or [], key)
+            conn.execute(
+                "UPDATE series SET tmdb_status=?, next_air_date=?, next_ep_season=?, next_ep_number=?, next_ep_name=? "
+                "WHERE series_uuid=?",
+                (upd.get("status"), ne.get("air_date"), ne.get("season_number"),
+                 ne.get("episode_number"), ne.get("name"), su),
+            )
+            conn.commit()  # un commit par série : libère la base avant l'appel TMDB suivant
+            local_reg = conn.execute(
+                "SELECT COUNT(*) FROM episodes WHERE series_uuid=? AND season_number>=1", (su,)).fetchone()[0]
+            if (upd.get("number_of_episodes") or 0) > local_reg:
+                to_refresh.append(su)
+            if progress:
+                progress((i + 1) / total, f"{i + 1}/{len(rows)}")
 
     added = 0
-    for su in to_refresh:  # refresh_series_from_tmdb ouvre sa propre connexion → hors de la boucle ci-dessus
+    for su in to_refresh:  # refresh_series_from_tmdb ouvre sa propre connexion → hors du bloc ci-dessus
         res = refresh_series_from_tmdb(user_id, su, key)
         if res["status"] == "ok":
             added += res["added"]
 
-    from .mutations import set_meta
-    set_meta(user_id, "last_sync", pd.Timestamp.now().isoformat())
+    set_meta(user_id, "last_sync", dt.datetime.now().isoformat())
     return {"checked": len(rows), "series_with_new": len(to_refresh), "episodes_added": added}
 
 
 def sync_runtimes(user_id: int, key: str, progress=None) -> dict:
     """Remplit les durées manquantes via TMDB (films + épisodes) de l'utilisateur. Idempotent.
     `progress` : callback(fraction, libellé)."""
-    conn = get_conn()
-    movies = conn.execute(
-        "SELECT uuid, title, imdb_id, tvdb_id, tmdb_id FROM movies WHERE runtime IS NULL AND user_id=?",
-        (user_id,),
-    ).fetchall()
-    series = conn.execute(
-        "SELECT series_uuid, title, imdb_id, tvdb_id, tmdb_id FROM series WHERE user_id=? AND series_uuid IN "
-        "(SELECT DISTINCT series_uuid FROM episodes WHERE runtime IS NULL)",
-        (user_id,),
-    ).fetchall()
-    total = max(len(movies) + len(series), 1)
-    done = 0
+    with connect() as conn:
+        movies = conn.execute(
+            "SELECT uuid, title, imdb_id, tvdb_id, tmdb_id FROM movies WHERE runtime IS NULL AND user_id=?",
+            (user_id,),
+        ).fetchall()
+        series = conn.execute(
+            "SELECT series_uuid, title, imdb_id, tvdb_id, tmdb_id FROM series WHERE user_id=? AND series_uuid IN "
+            "(SELECT DISTINCT series_uuid FROM episodes WHERE runtime IS NULL)",
+            (user_id,),
+        ).fetchall()
+        total = max(len(movies) + len(series), 1)
+        done = 0
 
-    for uuid, title, imdb, tvdb, tmdb in movies:
-        mid = tmdb or enrich.resolve_tmdb_id(imdb, tvdb, "movie", key)
-        if mid:
-            conn.execute("UPDATE movies SET runtime=?, tmdb_id=? WHERE uuid=?",
-                         (enrich.fetch_movie_runtime(mid, key), mid, uuid))
-        done += 1
-        if progress:
-            progress(done / total, f"Film — {title}")
-    conn.commit()
+        for uuid, title, imdb, tvdb, tmdb in movies:
+            mid = tmdb or enrich.resolve_tmdb_id(imdb, tvdb, "movie", key)
+            if mid:
+                runtime = enrich.fetch_movie_runtime(mid, key)
+                conn.execute("UPDATE movies SET runtime=?, tmdb_id=? WHERE uuid=?", (runtime, mid, uuid))
+                conn.commit()
+            done += 1
+            if progress:
+                progress(done / total, f"Film — {title}")
 
-    for su, title, imdb, tvdb, tmdb in series:
-        sid = tmdb or enrich.resolve_tmdb_id(imdb, tvdb, "tv", key)
-        if sid:
-            conn.execute("UPDATE series SET tmdb_id=? WHERE series_uuid=?", (sid, su))
-            mapping = enrich.fetch_tv_episode_runtimes(sid, key)
-            for (sn, en), rt in mapping.items():
-                if rt:
-                    conn.execute(
-                        "UPDATE episodes SET runtime=? WHERE series_uuid=? AND season_number=? AND episode_number=?",
-                        (rt, su, sn, en),
-                    )
-            # Numérotation TV Time ≠ TMDB (ex. One Piece par arcs) : on comble les épisodes
-            # non appariés avec la durée médiane de la série plutôt qu'un défaut global.
-            vals = sorted(v for v in mapping.values() if v)
-            if vals:
-                conn.execute("UPDATE episodes SET runtime=? WHERE series_uuid=? AND runtime IS NULL",
-                             (vals[len(vals) // 2], su))
-            conn.commit()
-        done += 1
-        if progress:
-            progress(done / total, f"Série — {title}")
+        for su, title, imdb, tvdb, tmdb in series:
+            sid = tmdb or enrich.resolve_tmdb_id(imdb, tvdb, "tv", key)
+            if sid:
+                mapping = enrich.fetch_tv_episode_runtimes(sid, key)
+                conn.execute("UPDATE series SET tmdb_id=? WHERE series_uuid=?", (sid, su))
+                conn.executemany(
+                    "UPDATE episodes SET runtime=? WHERE series_uuid=? AND season_number=? AND episode_number=?",
+                    [(rt, su, sn, en) for (sn, en), rt in mapping.items() if rt],
+                )
+                # Numérotation TV Time ≠ TMDB (ex. One Piece par arcs) : on comble les épisodes
+                # non appariés avec la durée médiane de la série plutôt qu'un défaut global.
+                vals = sorted(v for v in mapping.values() if v)
+                if vals:
+                    conn.execute("UPDATE episodes SET runtime=? WHERE series_uuid=? AND runtime IS NULL",
+                                 (vals[len(vals) // 2], su))
+                conn.commit()
+            done += 1
+            if progress:
+                progress(done / total, f"Série — {title}")
 
-    conn.close()
     return runtime_coverage(user_id)
 
 
 def sync_images(user_id: int, key: str, progress=None) -> dict:
     """Récupère les affiches (poster_path) manquantes via TMDB, pour l'utilisateur. Idempotent."""
-    conn = get_conn()
-    series = conn.execute(
-        "SELECT series_uuid, title, imdb_id, tvdb_id, tmdb_id FROM series WHERE poster_path IS NULL AND user_id=?",
-        (user_id,),
-    ).fetchall()
-    movies = conn.execute(
-        "SELECT uuid, title, imdb_id, tvdb_id, tmdb_id FROM movies WHERE poster_path IS NULL AND user_id=?",
-        (user_id,),
-    ).fetchall()
-    total = max(len(series) + len(movies), 1)
-    done = 0
-
-    for su, title, imdb, tvdb, tmdb in series:
-        sid = tmdb or enrich.resolve_tmdb_id(imdb, tvdb, "tv", key)
-        path = enrich.fetch_poster(sid, "tv", key) if sid else None
-        conn.execute("UPDATE series SET poster_path=?, tmdb_id=COALESCE(tmdb_id,?) WHERE series_uuid=?",
-                     (path or "", sid, su))
-        conn.commit()  # par titre : ne pas garder la base verrouillée pendant l'appel TMDB suivant
-        done += 1
-        if progress:
-            progress(done / total, title)
-
-    for uuid, title, imdb, tvdb, tmdb in movies:
-        mid = tmdb or enrich.resolve_tmdb_id(imdb, tvdb, "movie", key)
-        path = enrich.fetch_poster(mid, "movie", key) if mid else None
-        conn.execute("UPDATE movies SET poster_path=?, tmdb_id=COALESCE(tmdb_id,?) WHERE uuid=?",
-                     (path or "", mid, uuid))
-        conn.commit()
-        done += 1
-        if progress:
-            progress(done / total, title)
-    conn.close()
+    with connect() as conn:
+        missing = [
+            (table, id_col, media, conn.execute(
+                f"SELECT {id_col}, title, imdb_id, tvdb_id, tmdb_id FROM {table} "
+                "WHERE poster_path IS NULL AND user_id=?", (user_id,)).fetchall())
+            for table, id_col, media in (("series", "series_uuid", "tv"), ("movies", "uuid", "movie"))
+        ]
+        total = max(sum(len(rows) for *_, rows in missing), 1)
+        done = 0
+        for table, id_col, media, rows in missing:
+            for uuid, title, imdb, tvdb, tmdb in rows:
+                tid = tmdb or enrich.resolve_tmdb_id(imdb, tvdb, media, key)
+                path = enrich.fetch_poster(tid, media, key) if tid else None
+                conn.execute(
+                    f"UPDATE {table} SET poster_path=?, tmdb_id=COALESCE(tmdb_id,?) WHERE {id_col}=?",
+                    (path or "", tid, uuid))
+                conn.commit()
+                done += 1
+                if progress:
+                    progress(done / total, title)
     return image_coverage(user_id)

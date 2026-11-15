@@ -4,9 +4,7 @@ from __future__ import annotations
 import os
 import sqlite3
 
-import pandas as pd
-
-from .connection import ensure_column, fmt, get_conn
+from .connection import connect, ensure_column, now
 
 # Utilisateur auquel sont rattachées les données existantes lors de la migration
 # multi-utilisateur. Surchargeable par variable d'env.
@@ -116,32 +114,30 @@ CREATE INDEX IF NOT EXISTS idx_ep_series ON episodes(series_uuid);
 
 def init_db() -> None:
     """Crée le schéma et applique les migrations."""
-    conn = get_conn()
-    conn.executescript(SCHEMA)
-    # Migrations pour bases créées avant l'ajout des durées / affiches
-    ensure_column(conn, "episodes", "runtime", "INTEGER")
-    ensure_column(conn, "movies", "runtime", "INTEGER")
-    ensure_column(conn, "series", "poster_path", "TEXT")
-    ensure_column(conn, "movies", "poster_path", "TEXT")
-    # Suivi des sorties à venir (page « Prochainement »)
-    ensure_column(conn, "series", "tmdb_status", "TEXT")
-    ensure_column(conn, "series", "next_air_date", "TEXT")
-    ensure_column(conn, "series", "next_ep_season", "INTEGER")
-    ensure_column(conn, "series", "next_ep_number", "INTEGER")
-    ensure_column(conn, "series", "next_ep_name", "TEXT")
-    # Date de sortie par épisode : masque d'« En cours » les séries à jour en attente
-    ensure_column(conn, "episodes", "air_date", "TEXT")
-    # Revisionnage retiré d'« En cours » : masqué jusqu'au prochain visionnage
-    ensure_column(conn, "series", "rewatch_dismissed_at", "TEXT")
-    # Inscription + vérification d'email (bases créées avant l'ajout)
-    ensure_column(conn, "users", "email", "TEXT")
-    ensure_column(conn, "users", "email_verified", "INTEGER DEFAULT 0")
-    conn.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL"
-    )
-    _migrate_multiuser(conn)
-    conn.commit()
-    conn.close()
+    with connect() as conn:
+        conn.executescript(SCHEMA)
+        # Migrations pour bases créées avant l'ajout des durées / affiches
+        ensure_column(conn, "episodes", "runtime", "INTEGER")
+        ensure_column(conn, "movies", "runtime", "INTEGER")
+        ensure_column(conn, "series", "poster_path", "TEXT")
+        ensure_column(conn, "movies", "poster_path", "TEXT")
+        # Suivi des sorties à venir (page « Prochainement »)
+        ensure_column(conn, "series", "tmdb_status", "TEXT")
+        ensure_column(conn, "series", "next_air_date", "TEXT")
+        ensure_column(conn, "series", "next_ep_season", "INTEGER")
+        ensure_column(conn, "series", "next_ep_number", "INTEGER")
+        ensure_column(conn, "series", "next_ep_name", "TEXT")
+        # Date de sortie par épisode : masque d'« En cours » les séries à jour en attente
+        ensure_column(conn, "episodes", "air_date", "TEXT")
+        # Revisionnage retiré d'« En cours » : masqué jusqu'au prochain visionnage
+        ensure_column(conn, "series", "rewatch_dismissed_at", "TEXT")
+        # Inscription + vérification d'email (bases créées avant l'ajout)
+        ensure_column(conn, "users", "email", "TEXT")
+        ensure_column(conn, "users", "email_verified", "INTEGER DEFAULT 0")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL"
+        )
+        _migrate_multiuser(conn)
 
 
 def get_or_create_user(conn: sqlite3.Connection, username: str) -> int:
@@ -151,7 +147,7 @@ def get_or_create_user(conn: sqlite3.Connection, username: str) -> int:
         return row[0]
     cur = conn.execute(
         "INSERT INTO users(username, created_at) VALUES (?,?)",
-        (username, fmt(pd.Timestamp.now())),
+        (username, now()),
     )
     return cur.lastrowid
 

@@ -1,7 +1,4 @@
-"""Dataset mis en cache (par utilisateur) et identité du user courant (via session).
-
-Le Dataset (DataFrames movies/episodes/series/events) est reconstruit à la demande et mis
-en cache process, **une entrée par utilisateur** ; toute mutation appelle invalidate(user_id).
+"""Identité du user courant (via le cookie de session).
 
 `current_user_id` lit le cookie de session et renvoie l'utilisateur authentifié (401 sinon).
 Les constantes de cookie sont ici pour être partagées par le routeur d'auth.
@@ -9,12 +6,10 @@ Les constantes de cookie sont ici pour être partagées par le routeur d'auth.
 from __future__ import annotations
 
 import os
-import threading
 
 from fastapi import HTTPException, Request
 
 from src import db
-from src.loader import Dataset
 
 # --- Cookie de session -------------------------------------------------------
 COOKIE_NAME = "tvtime_session"
@@ -42,38 +37,3 @@ def current_user_id(request: Request) -> int:
     if uid is None:
         raise HTTPException(status_code=401, detail="Non authentifié")
     return uid
-
-
-# --- Cache dataset -----------------------------------------------------------
-_cache: dict[int, Dataset] = {}
-# Après un visionnage, le front relance plusieurs lectures en même temps : sans verrou,
-# chacune reconstruirait le dataset de son côté (4 reconstructions concurrentes ≈ 8× plus
-# lent qu'une seule). Avec, la première reconstruit et les autres attendent son résultat.
-_load_lock = threading.Lock()
-# Compteur d'invalidations : un dataset lu AVANT une mutation mais terminé APRÈS ne doit
-# pas être mis en cache (il serait périmé).
-_generation = 0
-
-
-def get_dataset(user_id: int) -> Dataset:
-    ds = _cache.get(user_id)
-    if ds is not None:
-        return ds
-    with _load_lock:
-        ds = _cache.get(user_id)  # reconstruit entre-temps par une autre requête ?
-        if ds is None:
-            generation = _generation
-            ds = db.load_dataset(user_id)
-            if generation == _generation:
-                _cache[user_id] = ds
-    return ds
-
-
-def invalidate(user_id: int | None = None) -> None:
-    """Invalide le cache d'un utilisateur (ou de tous si user_id est None)."""
-    global _generation
-    _generation += 1
-    if user_id is None:
-        _cache.clear()
-    else:
-        _cache.pop(user_id, None)
