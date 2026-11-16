@@ -71,7 +71,7 @@ export default function Suivi() {
             </div>
           )}
           {stale.length > 0 && (
-            <details className="section-fold">
+            <details className="section-fold" open>
               <summary className="section-title">Pas regardées depuis un moment ({stale.length})</summary>
               <div className="grid">
                 {stale.map((s) => <SeriesCard key={s.uuid} s={s} showNext onComplete={celebrate} />)}
