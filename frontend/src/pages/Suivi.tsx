@@ -19,7 +19,6 @@ export default function Suivi() {
   const setTab = (t: Tab) => setParams(t === DEFAULT_TAB ? {} : { tab: t });
   const series = useQuery({ queryKey: ["series"], queryFn: api.series });
   const movies = useQuery({ queryKey: ["movies"], queryFn: api.movies });
-  const watchTime = useQuery({ queryKey: ["watchTime"], queryFn: api.watchTime });
 
   // Confettis « série terminée » : montés ici (le parent survit à la carte, qui quitte
   // la liste « En cours » une fois complétée) et rendus dans un portail sur <body>.
@@ -43,23 +42,6 @@ export default function Suivi() {
   return (
     <>
       {confetti && <Confetti />}
-      {watchTime.data && tab !== "decouvrir" && (
-        <div className="stats">
-          <div className="stat">
-            <div className="label">Séries</div>
-            <div className="value">{watchTime.data.series_label}</div>
-          </div>
-          <div className="stat">
-            <div className="label">Films</div>
-            <div className="value">{watchTime.data.movie_label}</div>
-          </div>
-          <div className="stat total">
-            <div className="label">Temps total devant l'écran</div>
-            <div className="value">{watchTime.data.total_label}</div>
-          </div>
-        </div>
-      )}
-
       <div className="tabs">
         <button className={tab === "encours" ? "active" : ""} onClick={() => setTab("encours")}>
           En cours ({recent.length + stale.length})

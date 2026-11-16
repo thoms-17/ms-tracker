@@ -30,6 +30,7 @@ function mois(iso: string) {
 export default function Stats() {
   const stats = useQuery({ queryKey: ["stats"], queryFn: api.stats });
   const series = useQuery({ queryKey: ["series"], queryFn: api.series });
+  const watchTime = useQuery({ queryKey: ["watchTime"], queryFn: api.watchTime });
 
   if (stats.isLoading) return <Spinner />;
   if (!stats.data) return <p className="muted">Statistiques indisponibles pour le moment.</p>;
@@ -45,6 +46,22 @@ export default function Stats() {
 
   return (
     <div className="statspage">
+      {watchTime.data && (
+        <div className="stats">
+          <div className="stat">
+            <div className="label">Séries</div>
+            <div className="value">{watchTime.data.series_label}</div>
+          </div>
+          <div className="stat">
+            <div className="label">Films</div>
+            <div className="value">{watchTime.data.movie_label}</div>
+          </div>
+          <div className="stat total">
+            <div className="label">Temps total devant l'écran</div>
+            <div className="value">{watchTime.data.total_label}</div>
+          </div>
+        </div>
+      )}
       <div className="stats">
         <div className="stat">
           <div className="label">Visionnages enregistrés</div>

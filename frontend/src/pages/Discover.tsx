@@ -12,8 +12,8 @@ const CLE_RECOS = ["recommendations"];
 
 /**
  * Onglet « Découvrir » : suggestions « Pour toi » puis tendances de la semaine.
- * Sur mobile (où il s'ouvre par la loupe), le champ de recherche y est ancré en bas
- * de l'écran ; sur ordinateur, la recherche reste dans le header.
+ * Sur mobile (où il s'ouvre par la loupe), le champ de recherche est en haut de
+ * l'onglet ; sur ordinateur, la recherche reste dans le header.
  */
 export default function Discover() {
   const nav = useNavigate();
@@ -60,7 +60,7 @@ export default function Discover() {
 
   return (
     <div className="discover">
-      <SearchBar dock />
+      <SearchBar inline />
       {recos.isLoading && <Spinner />}
       {vide && (
         <p className="muted discover-empty">

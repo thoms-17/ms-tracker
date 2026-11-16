@@ -115,26 +115,11 @@
   /* Les messages passent au-dessus de la barre de navigation flottante */
   .toasts { bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); }
 
-  /* Recherche : pas de champ dans le header ; elle vit dans l'onglet « Découvrir »,
-     ancrée en bas de l'écran, juste au-dessus de la barre de navigation (62px de haut,
-     à 14px du bord). */
+  /* Recherche : pas de champ dans le header ; elle est en haut de l'onglet « Découvrir » */
   .searchbox { display: none; }
-  .search-dock {
-    display: block; position: fixed; z-index: 49;
-    left: max(14px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right));
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 86px);
-  }
-  /* clavier ouvert : le champ passe au-dessus de tout, collé au clavier (bottom posé en JS) */
-  .search-dock.keyboard { z-index: 60; }
-  .search-dock input {
-    background: var(--glass-strong); box-shadow: var(--glass-shadow);
-    font-size: 16px; /* 16px min. : empêche l'auto-zoom d'iOS Safari au focus du champ */
-    padding: 12px 16px;
-  }
-  /* résultats déroulés vers le haut, au-dessus du champ */
-  .search-dock .results { top: auto; bottom: calc(100% + 6px); max-height: 50vh; }
-  /* le contenu de l'onglet ne doit pas finir caché derrière le champ ancré */
-  .discover { padding-bottom: 64px; }
+  .search-inline { display: flex; position: relative; z-index: 5; margin-bottom: 20px; }
+  /* 16px min. : empêche l'auto-zoom d'iOS Safari au focus du champ */
+  .search-inline input { font-size: 16px; padding: 12px 16px; }
   .bn-search.active { color: var(--lg-tint); }
 
   /* Header compact : on garde l'avatar, on masque le nom */

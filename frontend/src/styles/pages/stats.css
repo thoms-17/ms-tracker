@@ -2,6 +2,8 @@
 .stat-section { margin-top: 30px; }
 .stat-note { font-size: 12px; line-height: 1.5; max-width: 640px; margin: 10px 0 0; }
 .statspage > .stat-note { margin-top: 30px; }
+/* deux rangées de tuiles (temps, puis chiffres clés) : rapprochées l'une de l'autre */
+.statspage > .stats + .stats { margin-top: -12px; }
 .stat-lead { margin: -6px 0 10px; }
 
 /* Écran large : les sections se rangent sur deux colonnes */

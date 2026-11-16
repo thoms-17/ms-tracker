@@ -1,25 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
-import { useKeyboardInset } from "../hooks";
 import type { SearchItem } from "../types";
 
 /**
  * Champ de recherche TMDB et sa liste de résultats.
  *  · par défaut : dans le header (ordinateur ; masqué sur mobile) ;
- *  · `dock` : ancré en bas de l'écran, juste au-dessus de la barre de navigation
- *    (mobile, onglet « Découvrir ») — à portée de pouce, résultats déroulés vers le haut.
+ *  · `inline` : en haut de l'onglet « Découvrir » (mobile ; masqué sur ordinateur,
+ *    où le header porte déjà la recherche).
  */
-export default function SearchBar({ dock = false }: { dock?: boolean }) {
+export default function SearchBar({ inline = false }: { inline?: boolean }) {
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false); // liste de résultats déroulée
   const boxRef = useRef<HTMLDivElement>(null);
   const nav = useNavigate();
-  // Clavier virtuel ouvert : le champ ancré remonte juste au-dessus de lui.
-  const keyboard = useKeyboardInset(dock);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q.trim()), 250);
@@ -53,12 +49,8 @@ export default function SearchBar({ dock = false }: { dock?: boolean }) {
     else nav(`/tmdb/movie/${r.tmdb_id}`);
   };
 
-  const box = (
-    <div
-      className={dock ? `search-dock${keyboard > 0 ? " keyboard" : ""}` : "searchbox"}
-      style={dock && keyboard > 0 ? { bottom: keyboard + 8 } : undefined}
-      ref={boxRef}
-    >
+  return (
+    <div className={inline ? "search-inline" : "searchbox"} ref={boxRef}>
       <div className="search-panel">
         <input
           enterKeyHint="search"
@@ -87,6 +79,4 @@ export default function SearchBar({ dock = false }: { dock?: boolean }) {
       </div>
     </div>
   );
-  // Ancré : porté sur <body>, pour qu'aucun parent ne fausse son positionnement fixe.
-  return dock ? createPortal(box, document.body) : box;
 }
