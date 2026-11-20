@@ -7,6 +7,7 @@
   --muted: #a3a29b;
   --accent: #3987e5;
   --good: #1baf7a;
+  --done: #7c5cd6; /* série vue en entier et terminée pour de bon */
 
   /* Liquid glass : panneaux translucides floutés */
   --glass: rgba(28, 30, 36, 0.55);

@@ -28,6 +28,9 @@ def _s(v) -> str | None:
     return None if v is None or v == "" else str(v)
 
 
+# Statuts TMDB d'une série dont plus aucun épisode ne sortira
+ENDED_STATUSES = {"Ended", "Canceled"}
+
 # Un épisode sorti depuis au plus ce nombre de jours est signalé « nouveau »
 NEW_EPISODE_DAYS = 7
 # Sans épisode coché depuis ce nombre de jours, une série « En cours » passe dans
@@ -169,7 +172,8 @@ def series_detail(user_id: int, uuid: str) -> SeriesDetail | None:
     return SeriesDetail(
         uuid=uuid, title=s["title"], poster_path=_s(s["poster_path"]), status=_s(s["status"]),
         tmdb_id=s["tmdb_id"], n_watched=n_watched, n_episodes=n_episodes,
-        completion=n_watched / n_episodes if n_episodes else 0.0, seasons=seasons)
+        completion=n_watched / n_episodes if n_episodes else 0.0,
+        ended=s["tmdb_status"] in ENDED_STATUSES, seasons=seasons)
 
 
 def movie_items(user_id: int) -> list[MovieItem]:

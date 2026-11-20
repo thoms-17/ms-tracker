@@ -66,6 +66,8 @@ export interface SeriesDetail {
   n_watched: number;
   n_episodes: number;
   completion: number;
+  /** Plus aucun épisode à venir selon TMDB (série terminée ou annulée). */
+  ended: boolean;
   seasons: SeasonGroup[];
 }
 

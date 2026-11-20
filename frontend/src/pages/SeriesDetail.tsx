@@ -140,7 +140,9 @@ export default function SeriesDetail() {
         {url ? <img className="detail-poster" src={url} alt={s.title} /> : null}
         <div className="detail-meta">
           <h2>{s.title}</h2>
-          <div className="bar" style={{ maxWidth: 320 }}>
+          {/* Violette : tout est vu et la série est terminée pour de bon. Bleue sinon,
+              y compris quand tout est vu mais que la suite est annoncée. */}
+          <div className={`bar${isComplete && s.ended ? " done" : ""}`} style={{ maxWidth: 320 }}>
             <span style={{ width: `${Math.min(s.completion * 100, 100)}%` }} />
           </div>
           <p className="muted">

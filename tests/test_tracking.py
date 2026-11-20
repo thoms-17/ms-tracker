@@ -171,3 +171,12 @@ def test_two_users_can_track_the_same_tmdb_series(client):
     client.post(f"/api/episodes/{ep(mine, 1, 1)}/watch")
     client.user = BOB
     assert client.get("/api/series").json()[0]["n_watched"] == 0
+
+
+def test_detail_says_whether_the_series_is_over(client, sql):
+    uuid = make_series()
+    client.post(f"/api/episodes/{ep(uuid, 1, 1)}/watch")
+    assert client.get(f"/api/series/{uuid}").json()["ended"] is False   # statut TMDB encore inconnu
+    for status, ended in (("Returning Series", False), ("Ended", True), ("Canceled", True)):
+        sql("UPDATE series SET tmdb_status=? WHERE series_uuid=?", (status, uuid))
+        assert client.get(f"/api/series/{uuid}").json()["ended"] is ended, status

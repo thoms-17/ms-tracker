@@ -132,6 +132,9 @@ class SeriesDetail(BaseModel):
     n_watched: int
     n_episodes: int
     completion: float
+    # Plus aucun épisode à venir selon TMDB (série terminée ou annulée). Faux tant que
+    # la synchro n'a pas lu la fiche TMDB de la série.
+    ended: bool = False
     seasons: list[SeasonGroup]
 
 

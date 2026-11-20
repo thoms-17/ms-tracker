@@ -17,7 +17,7 @@ def tracked_series(user_id: int, series_uuid: str | None = None) -> list[sqlite3
     with connect() as conn:
         return _rows(
             conn,
-            "SELECT series_uuid, title, status, tmdb_id, poster_path, rewatch_dismissed_at "
+            "SELECT series_uuid, title, status, tmdb_id, tmdb_status, poster_path, rewatch_dismissed_at "
             "FROM series WHERE user_id = ? AND (? IS NULL OR series_uuid = ?) ORDER BY rowid",
             (user_id, series_uuid, series_uuid),
         )

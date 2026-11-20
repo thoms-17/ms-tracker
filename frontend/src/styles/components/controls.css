@@ -1,6 +1,7 @@
 /* Barre de progression et boutons. */
 .bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--accent); }
+.bar.done > span { background: var(--done); }
 
 button.btn {
   background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text);
