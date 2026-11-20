@@ -277,6 +277,12 @@ def _trailer(videos: list[dict]) -> str | None:
     return None
 
 
+def _cast_member(name: str | None, character: str | None, profile_path: str | None) -> dict:
+    # TMDB laisse les rôles en anglais : « (voice) » est la seule mention courante à traduire
+    return {"name": name, "character": (character or "").replace("(voice)", "(voix)") or None,
+            "profile_path": profile_path}
+
+
 def fetch_movie_page(tmdb_id: int, key: str) -> dict | None:
     """Tout ce qu'affiche la page d'un film, en deux appels TMDB au plus (fiche avec
     casting, vidéos et films proches ; puis la saga s'il appartient à une collection).
@@ -307,10 +313,8 @@ def fetch_movie_page(tmdb_id: int, key: str) -> dict | None:
         "vote_average": det.get("vote_average") or None,
         "vote_count": det.get("vote_count") or 0,
         "directors": [c["name"] for c in credits.get("crew", []) if c.get("job") == "Director"][:3],
-        # TMDB laisse les rôles en anglais : « (voice) » est la seule mention courante à traduire
-        "cast": [{"name": c.get("name"),
-                  "character": (c.get("character") or "").replace("(voice)", "(voix)") or None,
-                  "profile_path": c.get("profile_path")} for c in credits.get("cast", [])[:12]],
+        "cast": [_cast_member(c.get("name"), c.get("character"), c.get("profile_path"))
+                 for c in credits.get("cast", [])[:12]],
         "trailer_key": _trailer((det.get("videos") or {}).get("results", [])),
         "similar": [{"tmdb_id": m.get("id"), "title": m.get("title"), "year": _year(m.get("release_date")),
                      "poster_path": m.get("poster_path")}
@@ -333,3 +337,54 @@ def fetch_movie_page(tmdb_id: int, key: str) -> dict | None:
                 {"tmdb_id": m.get("id"), "title": m.get("title"), "year": _year(m.get("release_date")),
                  "poster_path": m.get("poster_path")} for m in parts]}
     return page
+
+
+# Statut TMDB d'une série → libellé affiché
+_TV_STATUS = {
+    "Returning Series": "En cours de diffusion", "Ended": "Terminée", "Canceled": "Annulée",
+    "In Production": "En production", "Planned": "Annoncée", "Pilot": "Pilote",
+}
+
+
+def fetch_tv_page(tmdb_id: int, key: str) -> dict | None:
+    """Fiche d'une série pour sa page, en un seul appel TMDB (avec casting de toutes les
+    saisons, vidéos et séries proches). None si la fiche ne répond pas."""
+    try:
+        r = requests.get(f"{BASE}/tv/{tmdb_id}", params={
+            "api_key": key, "language": "fr-FR",
+            "append_to_response": "aggregate_credits,videos,recommendations",
+            "include_video_language": "fr,en",
+        }, timeout=10)
+        if r.status_code != 200:
+            return None
+        det = r.json()
+    except requests.RequestException:
+        return None
+
+    # Casting de toute la série (et non de la dernière saison seulement), dans l'ordre TMDB
+    cast = []
+    for c in (det.get("aggregate_credits") or {}).get("cast", [])[:12]:
+        roles = c.get("roles") or [{}]
+        cast.append(_cast_member(c.get("name"), roles[0].get("character"), c.get("profile_path")))
+    # TMDB ne renseigne presque plus la durée type : on se rabat sur le dernier épisode diffusé
+    runtimes = det.get("episode_run_time") or [(det.get("last_episode_to_air") or {}).get("runtime")]
+    return {
+        "backdrop_path": det.get("backdrop_path"),
+        "overview": det.get("overview") or None,
+        "tagline": det.get("tagline") or None,
+        "genre_ids": _genre_ids(det),
+        "first_year": _year(det.get("first_air_date")),
+        "last_year": _year(det.get("last_air_date")),
+        "status": _TV_STATUS.get(det.get("status") or "", det.get("status")),
+        "ended": det.get("status") in ("Ended", "Canceled"),
+        "networks": [n["name"] for n in det.get("networks", []) if n.get("name")][:3],
+        "episode_runtime": runtimes[0] or None,
+        "vote_average": det.get("vote_average") or None,
+        "vote_count": det.get("vote_count") or 0,
+        "creators": [c["name"] for c in det.get("created_by", []) if c.get("name")][:3],
+        "cast": cast,
+        "trailer_key": _trailer((det.get("videos") or {}).get("results", [])),
+        "similar": [{"tmdb_id": m.get("id"), "title": m.get("name"), "year": _year(m.get("first_air_date")),
+                     "poster_path": m.get("poster_path")}
+                    for m in (det.get("recommendations") or {}).get("results", []) if m.get("poster_path")][:18],
+    }

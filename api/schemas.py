@@ -209,6 +209,35 @@ class MovieLink(BaseModel):
     watched_count: int = 0   # visionnages de l'utilisateur
 
 
+class SeriesLink(BaseModel):
+    """Série proche, affichée sur la page d'une série."""
+    tmdb_id: int
+    title: str | None = None
+    year: str | None = None
+    poster_path: str | None = None
+
+
+class TvPage(BaseModel):
+    """Fiche TMDB d'une série, affichée sur sa page (suivie ou en aperçu)."""
+    tmdb_id: int
+    backdrop_path: str | None = None
+    overview: str | None = None
+    tagline: str | None = None
+    genres: list[str] = []
+    first_year: str | None = None
+    last_year: str | None = None
+    status: str | None = None          # libellé : « Terminée », « En cours de diffusion »…
+    ended: bool = False
+    networks: list[str] = []           # chaînes / plateformes de diffusion d'origine
+    episode_runtime: int | None = None  # minutes
+    vote_average: float | None = None
+    vote_count: int = 0
+    creators: list[str] = []
+    cast: list[CastMember] = []
+    trailer_key: str | None = None
+    similar: list[SeriesLink] = []     # séries proches que l'utilisateur ne suit pas
+
+
 class MovieCollection(BaseModel):
     name: str | None = None
     parts: list[MovieLink]   # par ordre de sortie, le film affiché compris

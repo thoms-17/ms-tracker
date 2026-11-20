@@ -9,6 +9,7 @@ import type {
   SyncStatus,
   TmdbMoviePreview,
   TmdbSeriesPreview,
+  TvPage,
   Trending,
   UpcomingItem,
   WatchProviders,
@@ -135,6 +136,8 @@ export const api = {
   // découverte TMDB
   search: (q: string) => req<SearchItem[]>(`/search?q=${encodeURIComponent(q)}`),
   tvPreview: (tmdbId: number) => req<TmdbSeriesPreview>(`/tmdb/tv/${tmdbId}`),
+  // fiche complète (synopsis, casting, bande-annonce, séries proches)
+  tvPage: (tmdbId: number) => req<TvPage>(`/tmdb/tv/${tmdbId}/page`),
   trackSeries: (tmdbId: number, mark?: { season: number; number: number; catchUp?: boolean }) =>
     req<{ uuid: string }>(`/tmdb/tv/${tmdbId}/track`, {
       method: "POST",

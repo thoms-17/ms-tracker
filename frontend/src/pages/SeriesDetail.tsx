@@ -5,7 +5,9 @@ import { api, posterUrl, type UnwatchResult } from "../api";
 import BackLink from "../components/BackLink";
 import Confetti from "../components/Confetti";
 import CatchUpModal from "../components/CatchUpModal";
+import { SeriesBottom, SeriesFacts, useTvPage } from "../components/SeriesExtras";
 import Spinner from "../components/Spinner";
+import { Backdrop, Synopsis, TrailerLink } from "../components/TmdbExtras";
 import { episodeCode } from "../format";
 import { refreshAfterWatch } from "../refresh";
 import { useOptimisticWatch } from "../watch";
@@ -71,6 +73,7 @@ export default function SeriesDetail() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const detail = useQuery({ queryKey: ["series", uuid], queryFn: () => api.seriesDetail(uuid) });
+  const page = useTvPage(detail.data?.tmdb_id ?? null);
 
   // Confettis quand la série vient d'être terminée (transition non-terminée → terminée).
   const [confetti, setConfetti] = useState(false);
@@ -134,13 +137,15 @@ export default function SeriesDetail() {
   };
 
   return (
-    <>
+    <div className="media-page">
       {confetti && <Confetti />}
+      <Backdrop path={page.data?.backdrop_path ?? null} />
       <BackLink />
       <div className="detail-head">
         {url ? <img className="detail-poster" src={url} alt={s.title} /> : null}
         <div className="detail-meta">
           <h2>{s.title}</h2>
+          <SeriesFacts page={page.data} />
           {/* Violette : tout est vu et la série est terminée pour de bon. Bleue sinon,
               y compris quand tout est vu mais que la suite est annoncée. */}
           <div className={`bar${isComplete && s.ended ? " done" : ""}`} style={{ maxWidth: 320 }}>
@@ -149,9 +154,14 @@ export default function SeriesDetail() {
           <p className="muted">
             {s.n_watched}/{s.n_episodes} épisodes réguliers ({Math.round(s.completion * 100)} %)
           </p>
+          {page.data?.trailer_key && (
+            <div className="media-actions"><TrailerLink youtubeKey={page.data.trailer_key} /></div>
+          )}
           {s.tmdb_id && <WatchProviders media="tv" tmdbId={s.tmdb_id} />}
         </div>
       </div>
+
+      <Synopsis text={page.data?.overview ?? null} folded />
 
       {s.seasons.map((se) => (
         <Season
@@ -163,7 +173,9 @@ export default function SeriesDetail() {
           onChange={refresh}
         />
       ))}
-    </>
+
+      <SeriesBottom page={page.data} />
+    </div>
   );
 }
 

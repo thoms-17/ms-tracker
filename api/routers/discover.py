@@ -11,6 +11,7 @@ from src import enrich
 
 from .. import deps
 from ..schemas import (CastMember, MovieCollection, MovieLink, PreviewEpisode, PreviewSeason,
+                       SeriesLink, TvPage,
                        Recommendation, Recommendations,
                        SearchItem, TmdbMoviePreview,
                        TmdbSeriesPreview, TrackRequest, Trending, TrendingItem,
@@ -83,6 +84,27 @@ def tv_preview(tmdb_id: int, user_id: int = Uid):
                                     for e in s["episodes"]])
             for s in seasons
         ])
+
+
+@router.get("/tmdb/tv/{tmdb_id}/page", response_model=TvPage)
+def tv_page(tmdb_id: int, user_id: int = Uid):
+    """Fiche complète d'une série (synopsis, casting, bande-annonce, séries proches).
+
+    Séparée de l'aperçu et du détail : ceux-ci affichent les épisodes sans l'attendre.
+    """
+    page = enrich.fetch_tv_page(tmdb_id, _key())
+    if page is None:
+        raise HTTPException(404, "Série introuvable sur TMDB")
+    tracked = {i for media, i in db.library_keys(user_id) if media == "tv"}
+    genre_ids = page.pop("genre_ids")
+    similar = page.pop("similar")
+    cast = page.pop("cast")
+    return TvPage(
+        tmdb_id=tmdb_id, **page, genres=enrich.genre_names(genre_ids),
+        cast=[CastMember(**c) for c in cast],
+        # à découvrir : les séries déjà suivies n'y ont pas leur place
+        similar=[SeriesLink(**s) for s in similar if s["tmdb_id"] not in tracked],
+    )
 
 
 @router.post("/tmdb/tv/{tmdb_id}/track", response_model=UuidResponse)

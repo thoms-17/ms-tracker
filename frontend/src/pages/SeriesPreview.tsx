@@ -6,7 +6,9 @@ import CatchUpModal from "../components/CatchUpModal";
 import { episodeCode } from "../format";
 import { refreshAfterWatch } from "../refresh";
 import BackLink from "../components/BackLink";
+import { SeriesBottom, SeriesFacts, useTvPage } from "../components/SeriesExtras";
 import Spinner from "../components/Spinner";
+import { Backdrop, Synopsis, TrailerLink } from "../components/TmdbExtras";
 import WatchControl from "../components/WatchControl";
 import WatchProviders from "../components/WatchProviders";
 import type { PreviewSeason } from "../types";
@@ -18,6 +20,10 @@ export default function SeriesPreview() {
   const qc = useQueryClient();
 
   const prev = useQuery({ queryKey: ["tvPreview", id], queryFn: () => api.tvPreview(id) });
+  const page = useTvPage(id);
+
+  // D'une série similaire à l'autre, c'est la même page : on remonte en haut.
+  useEffect(() => { window.scrollTo(0, 0); }, [id]);
 
   // Épisode cliqué alors que des épisodes le précèdent : on demande s'il faut les rattraper.
   const [ask, setAsk] = useState<{ season: number; number: number; avant: number; saisons: number } | null>(null);
@@ -61,18 +67,24 @@ export default function SeriesPreview() {
   };
 
   return (
-    <>
+    <div className="media-page">
+      <Backdrop path={page.data?.backdrop_path ?? null} />
       <BackLink />
       <div className="detail-head">
         {url && <img className="detail-poster" src={url} alt={p.title ?? ""} />}
         <div className="detail-meta">
           <h2>{p.title}</h2>
-          <p className="muted">Aperçu TMDB — pas encore dans ton suivi</p>
-          <p>{p.overview}</p>
-          <p className="muted">{p.n_seasons} saisons · {p.n_episodes} épisodes</p>
+          <SeriesFacts page={page.data}
+            extra={`${p.n_seasons} saison${p.n_seasons > 1 ? "s" : ""} · ${p.n_episodes} épisodes`} />
+          <p className="muted media-infos">Pas encore dans ton suivi</p>
+          {page.data?.trailer_key && (
+            <div className="media-actions"><TrailerLink youtubeKey={page.data.trailer_key} /></div>
+          )}
           <WatchProviders media="tv" tmdbId={id} />
         </div>
       </div>
+
+      <Synopsis text={p.overview} folded />
 
       <p className="muted">
         Coche un épisode pour ajouter la série à ton suivi.
@@ -96,7 +108,9 @@ export default function SeriesPreview() {
           onClose={() => setAsk(null)}
         />
       )}
-    </>
+
+      <SeriesBottom page={page.data} />
+    </div>
   );
 }
 

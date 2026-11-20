@@ -210,3 +210,25 @@ def test_movie_page(client, monkeypatch):
     mine = client.get("/api/tmdb/movie/1").json()
     assert (mine["watched_count"], mine["uuid"]) == (2, seen)
     assert client.get("/api/tmdb/movie/404").status_code == 404
+
+
+def test_series_page(client, monkeypatch):
+    from src import enrich
+    make_series(tmdb_id=7)                                      # déjà suivie
+    link = lambda i, t: {"tmdb_id": i, "title": t, "year": "2010", "poster_path": f"/{i}.jpg"}
+    monkeypatch.setattr(enrich, "fetch_tv_page", lambda tmdb_id, key: None if tmdb_id == 404 else {
+        "backdrop_path": "/b.jpg", "overview": "Résumé", "tagline": None, "genre_ids": [10765, 18],
+        "first_year": "2008", "last_year": "2013", "status": "Terminée", "ended": True,
+        "networks": ["AMC"], "episode_runtime": 47, "vote_average": 8.9, "vote_count": 15000,
+        "creators": ["Vince Gilligan"],
+        "cast": [{"name": "Bryan Cranston", "character": "Walter White", "profile_path": "/c.jpg"}],
+        "trailer_key": "xyz", "similar": [link(7, "Suivie"), link(8, "À découvrir")],
+    })
+    monkeypatch.setattr(enrich, "get_api_key", lambda: "clé")
+
+    p = client.get("/api/tmdb/tv/1/page").json()
+    assert p["genres"] == ["Science-fiction", "Fantastique", "Drame"]
+    assert (p["status"], p["ended"], p["networks"], p["creators"]) == ("Terminée", True, ["AMC"], ["Vince Gilligan"])
+    assert p["cast"][0]["character"] == "Walter White"
+    assert [s["title"] for s in p["similar"]] == ["À découvrir"]   # les séries suivies en sont retirées
+    assert client.get("/api/tmdb/tv/404/page").status_code == 404

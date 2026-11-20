@@ -176,6 +176,35 @@ export interface TmdbSeriesPreview {
   tracked_uuid: string | null;
 }
 
+export interface CastMember {
+  name: string | null;
+  character: string | null;
+  profile_path: string | null;
+}
+
+/** Fiche TMDB d'une série, affichée sur sa page (suivie ou en aperçu). */
+export interface TvPage {
+  tmdb_id: number;
+  backdrop_path: string | null;
+  overview: string | null;
+  tagline: string | null;
+  genres: string[];
+  first_year: string | null;
+  last_year: string | null;
+  /** « Terminée », « En cours de diffusion »… */
+  status: string | null;
+  ended: boolean;
+  networks: string[];
+  episode_runtime: number | null;
+  vote_average: number | null;
+  vote_count: number;
+  creators: string[];
+  cast: CastMember[];
+  trailer_key: string | null;
+  /** Séries proches que l'utilisateur ne suit pas. */
+  similar: { tmdb_id: number; title: string | null; year: string | null; poster_path: string | null }[];
+}
+
 /** Autre film affiché sur la page d'un film (saga, films proches). */
 export interface MovieLink {
   tmdb_id: number;
@@ -202,7 +231,7 @@ export interface TmdbMoviePreview {
   vote_average: number | null;
   vote_count: number;
   directors: string[];
-  cast: { name: string | null; character: string | null; profile_path: string | null }[];
+  cast: CastMember[];
   /** Vidéo YouTube de la bande-annonce. */
   trailer_key: string | null;
   /** Saga, par ordre de sortie, le film affiché compris. */
