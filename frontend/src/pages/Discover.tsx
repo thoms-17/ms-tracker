@@ -46,16 +46,8 @@ export default function Discover() {
 
   const open = (it: { media_type: string; tmdb_id: number }) => nav(`/tmdb/${it.media_type}/${it.tmdb_id}`);
 
-  const pourToi = (items: Recommendation[]) =>
-    items.map((r) => ({
-      ...r, key: cle(r),
-      note: r.because.length ? `Parce que tu as aimé ${r.because[0]}` : undefined,
-    }));
+  const pourToi = (items: Recommendation[]) => items.map((r) => ({ ...r, key: cle(r) }));
   const enVogue = (items: TrendingItem[]) => items.map((t) => ({ ...t, key: cle(t) }));
-  const pourquoi = (r: Recommendation) =>
-    `${r.title ?? ""}${r.year ? ` (${r.year})` : ""}` +
-    (r.because.length ? ` — parce que tu as aimé ${r.because.join(" et ")}` : "");
-
   const vide = recos.data && recos.data.tv.length + recos.data.movie.length === 0;
 
   return (
@@ -71,9 +63,9 @@ export default function Discover() {
       {recos.data && (
         <>
           <TitleRow title="Séries pour toi" items={pourToi(recos.data.tv)} onPick={open}
-            onDismiss={(r) => dismiss.mutate(r)} hint={pourquoi} />
+            onDismiss={(r) => dismiss.mutate(r)} />
           <TitleRow title="Films pour toi" items={pourToi(recos.data.movie)} onPick={open}
-            onDismiss={(r) => dismiss.mutate(r)} hint={pourquoi} />
+            onDismiss={(r) => dismiss.mutate(r)} />
         </>
       )}
 

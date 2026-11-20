@@ -5,8 +5,6 @@ export interface RowItem {
   title: string | null;
   year: string | null;
   poster_path: string | null;
-  /** Ligne d'explication sous le titre (ex. « Parce que tu as aimé… »). */
-  note?: string;
 }
 
 /**
@@ -38,7 +36,6 @@ export default function TitleRow<T extends RowItem>({ title, items, onPick, onDi
               )}
               <span className="trending-name">{it.title}</span>
               {it.year && <span className="trending-year">{it.year}</span>}
-              {it.note && <span className="trending-note">{it.note}</span>}
             </button>
             {onDismiss && (
               <button type="button" className="dismiss-btn" aria-label={`Pas intéressé par ${it.title ?? "ce titre"}`}

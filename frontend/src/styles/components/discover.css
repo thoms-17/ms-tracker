@@ -1,8 +1,3 @@
 /* Écran « Découvrir » : rangées d'affiches (styles partagés avec la vitrine, cf. pages/landing.css) */
 .discover-empty { max-width: 520px; font-size: 14px; line-height: 1.5; }
 .discover .trending-section:first-child { margin-top: 0; }
-/* Raison d'une suggestion, sous le titre */
-.trending-note {
-  font-size: 11px; line-height: 1.3; color: var(--muted);
-  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
