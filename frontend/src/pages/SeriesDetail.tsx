@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl, type UnwatchResult } from "../api";
 import BackLink from "../components/BackLink";
 import Confetti from "../components/Confetti";
+import EpisodeStill from "../components/EpisodeStill";
 import CatchUpModal from "../components/CatchUpModal";
 import { SeriesBottom, SeriesFacts, useTvPage } from "../components/SeriesExtras";
 import Spinner from "../components/Spinner";
@@ -169,6 +170,7 @@ export default function SeriesDetail() {
           uuid={uuid}
           se={se}
           open={se.season_number === nextSeason}
+          withStills={!!s.tmdb_id}
           avantNonVus={avantNonVus}
           onChange={refresh}
         />
@@ -179,10 +181,11 @@ export default function SeriesDetail() {
   );
 }
 
-function Season({ uuid, se, open, avantNonVus, onChange }: {
+function Season({ uuid, se, open, withStills, avantNonVus, onChange }: {
   uuid: string;
   se: SeasonGroup;
   open: boolean;
+  withStills: boolean;
   avantNonVus: (e: EpisodeItem) => Retard;
   onChange: (res?: unknown) => Promise<void> | void;
 }) {
@@ -201,8 +204,19 @@ function Season({ uuid, se, open, avantNonVus, onChange }: {
   // (hors spéciaux, que les actions de saison ne touchent pas).
   const comptes = se.episodes.filter((e) => !e.special).map((e) => e.watched_count);
   const passes = comptes.length ? Math.min(...comptes) : 0;
+  // Miniatures : chargées à la première ouverture de la saison, gardées ensuite.
+  const [ouverte, setOuverte] = useState(open);
+  const stills = useQuery({
+    queryKey: ["stills", uuid, s],
+    queryFn: () => api.seasonStills(uuid, s),
+    enabled: withStills && ouverte,
+    staleTime: 24 * 60 * 60 * 1000,
+    select: (rows) => new Map(rows.map((r) => [r.episode_id, r.still_path])),
+  });
+  // Saison sans aucune miniature (numérotation divergente, épisodes à venir) : pas de colonne vide.
+  const avecMiniatures = (stills.data?.size ?? 0) > 0;
   return (
-    <details className="season" open={open}>
+    <details className="season" open={open} onToggle={(e) => setOuverte(e.currentTarget.open)}>
       <summary>
         <span>{se.label} · {se.watched}/{se.total} vus{done ? " · complète" : ""}</span>
         <span className="season-actions" onClick={(e) => e.preventDefault()}>
@@ -217,14 +231,17 @@ function Season({ uuid, se, open, avantNonVus, onChange }: {
         </span>
       </summary>
       {se.episodes.map((e) => (
-        <Episode key={e.episode_id} uuid={uuid} e={e} retard={avantNonVus(e)} onChange={onChange} />
+        <Episode key={e.episode_id} uuid={uuid} e={e} retard={avantNonVus(e)} onChange={onChange}
+          still={avecMiniatures ? stills.data!.get(e.episode_id) ?? null : undefined} />
       ))}
     </details>
   );
 }
 
-function Episode({ uuid, e, retard, onChange }: {
+function Episode({ uuid, e, retard, onChange, still }: {
   uuid: string; e: EpisodeItem; retard: Retard; onChange: (res?: unknown) => Promise<void> | void;
+  /** Miniature : `undefined` = la saison n'en affiche pas ; `null` = cadre vide. */
+  still?: string | null;
 }) {
   const id = e.episode_id;
   const echec = "Échec — visionnage non enregistré";
@@ -244,6 +261,7 @@ function Episode({ uuid, e, retard, onChange }: {
 
   return (
     <div className={`ep${e.watched_count > 0 ? " seen" : ""}`}>
+      {still !== undefined && <EpisodeStill path={still} />}
       <span className="num">{num}</span>
       <span className="ep-name">
         {e.special && <span className="ep-tag">Spécial</span>}

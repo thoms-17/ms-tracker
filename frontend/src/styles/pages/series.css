@@ -25,3 +25,10 @@
   font-size: 11px; font-weight: 600; vertical-align: 1px;
   color: var(--muted); border: 1px solid var(--glass-brd);
 }
+
+/* Miniature d'un épisode (16:9), en tête de ligne */
+.ep-still {
+  display: block; width: 96px; aspect-ratio: 16 / 9; flex-shrink: 0; object-fit: cover;
+  border-radius: 6px; background: var(--glass); border: 1px solid var(--glass-brd);
+}
+.ep.seen .ep-still { opacity: 0.6; } /* comme le titre d'un épisode vu, en retrait */

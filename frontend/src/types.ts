@@ -162,7 +162,7 @@ export interface Trending {
 
 export interface PreviewSeason {
   season_number: number;
-  episodes: { episode_number: number; name: string | null }[];
+  episodes: { episode_number: number; name: string | null; still_path: string | null }[];
 }
 
 export interface TmdbSeriesPreview {

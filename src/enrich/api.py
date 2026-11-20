@@ -75,7 +75,7 @@ def fetch_trending(media: str, key: str | None, window: str = "week") -> list[di
 
 def fetch_season_episodes(tmdb_id: int, season_number: int, key: str,
                           fallback_runtime: int | None = None) -> list[dict] | None:
-    """Épisodes d'une saison TMDB : [{'episode_number','name','runtime','air_date'}, ...].
+    """Épisodes d'une saison TMDB : [{'episode_number','name','runtime','air_date','still_path'}, ...].
 
     ``air_date`` vaut '' quand TMDB annonce l'épisode sans date de sortie.
     Renvoie None si la saison n'a pas pu être lue.
@@ -87,7 +87,8 @@ def fetch_season_episodes(tmdb_id: int, season_number: int, key: str,
             return None
         return [
             {"episode_number": e.get("episode_number"), "name": e.get("name"),
-             "runtime": e.get("runtime") or fallback_runtime, "air_date": e.get("air_date") or ""}
+             "runtime": e.get("runtime") or fallback_runtime, "air_date": e.get("air_date") or "",
+             "still_path": e.get("still_path")}
             for e in r.json().get("episodes", [])
             if e.get("episode_number") is not None
         ]

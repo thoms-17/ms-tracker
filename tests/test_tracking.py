@@ -232,3 +232,23 @@ def test_series_page(client, monkeypatch):
     assert p["cast"][0]["character"] == "Walter White"
     assert [s["title"] for s in p["similar"]] == ["À découvrir"]   # les séries suivies en sont retirées
     assert client.get("/api/tmdb/tv/404/page").status_code == 404
+
+
+def test_season_stills(client, sql, monkeypatch):
+    from src import enrich
+    uuid = make_series(tmdb_id=7, seasons={1: 3, 2: 3})
+    sql("UPDATE episodes SET special=1 WHERE id=?", (ep(uuid, 2, 3),))   # spécial TV Time rangé en saison 2
+    tmdb = {
+        1: [{"episode_number": n, "still_path": f"/s1e{n}.jpg"} for n in (1, 2)],           # 2 chez TMDB, 3 chez nous
+        2: [{"episode_number": 1, "still_path": "/s2e1.jpg"}, {"episode_number": 2, "still_path": None},
+            {"episode_number": 3, "still_path": "/s2e3.jpg"}],
+    }
+    monkeypatch.setattr(enrich, "fetch_season_episodes", lambda tmdb_id, season, key: tmdb.get(season))
+    monkeypatch.setattr(enrich, "get_api_key", lambda: "clé")
+
+    assert client.get(f"/api/series/{uuid}/seasons/1/stills").json() == []      # numérotation divergente
+    assert client.get(f"/api/series/{uuid}/seasons/2/stills").json() == [
+        {"episode_id": ep(uuid, 2, 1), "still_path": "/s2e1.jpg"}]              # ni sans image, ni spécial
+    assert client.get(f"/api/series/{uuid}/seasons/9/stills").json() == []
+    client.user = BOB
+    assert client.get(f"/api/series/{uuid}/seasons/2/stills").status_code == 404

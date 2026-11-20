@@ -136,6 +136,9 @@ export const api = {
   // découverte TMDB
   search: (q: string) => req<SearchItem[]>(`/search?q=${encodeURIComponent(q)}`),
   tvPreview: (tmdbId: number) => req<TmdbSeriesPreview>(`/tmdb/tv/${tmdbId}`),
+  // miniatures des épisodes d'une saison suivie
+  seasonStills: (uuid: string, season: number) =>
+    req<{ episode_id: number; still_path: string }[]>(`/series/${uuid}/seasons/${season}/stills`),
   // fiche complète (synopsis, casting, bande-annonce, séries proches)
   tvPage: (tmdbId: number) => req<TvPage>(`/tmdb/tv/${tmdbId}/page`),
   trackSeries: (tmdbId: number, mark?: { season: number; number: number; catchUp?: boolean }) =>
@@ -158,6 +161,9 @@ export const posterUrl = (path: string | null, big = false) =>
 
 export const backdropUrl = (path: string | null) =>
   path ? `https://image.tmdb.org/t/p/w1280${path}` : null;
+
+export const stillUrl = (path: string | null) =>
+  path ? `https://image.tmdb.org/t/p/w300${path}` : null;
 
 export const profileUrl = (path: string | null) =>
   path ? `https://image.tmdb.org/t/p/w185${path}` : null;

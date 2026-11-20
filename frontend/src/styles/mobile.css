@@ -139,6 +139,10 @@
   .cols { gap: 3px; }
   .col-label { font-size: 10px; }
 
+  /* Épisodes : miniature plus petite, pour laisser la place au titre */
+  .ep { gap: 10px; padding: 8px 12px; }
+  .ep-still { width: 72px; border-radius: 5px; }
+
   /* Cibles tactiles un peu plus généreuses */
   .tabs button { padding: 12px 14px; }
   .segmented button { padding: 9px 14px; }

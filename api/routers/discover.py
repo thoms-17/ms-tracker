@@ -10,7 +10,8 @@ from src import db
 from src import enrich
 
 from .. import deps
-from ..schemas import (CastMember, MovieCollection, MovieLink, PreviewEpisode, PreviewSeason,
+from ..schemas import (CastMember, EpisodeStill, MovieCollection, MovieLink, PreviewEpisode,
+                       PreviewSeason,
                        SeriesLink, TvPage,
                        Recommendation, Recommendations,
                        SearchItem, TmdbMoviePreview,
@@ -80,10 +81,37 @@ def tv_preview(tmdb_id: int, user_id: int = Uid):
         n_seasons=len([s for s in seasons if s["season_number"] != 0]), n_episodes=total,
         seasons=[
             PreviewSeason(season_number=s["season_number"],
-                          episodes=[PreviewEpisode(episode_number=e["episode_number"], name=e.get("name"))
+                          episodes=[PreviewEpisode(episode_number=e["episode_number"], name=e.get("name"),
+                                                   still_path=e.get("still_path"))
                                     for e in s["episodes"]])
             for s in seasons
         ])
+
+
+@router.get("/series/{uuid}/seasons/{season}/stills", response_model=list[EpisodeStill])
+def season_stills(uuid: str, season: int, user_id: int = Uid):
+    """Miniatures TMDB des épisodes d'une saison suivie (chargées quand la saison s'ouvre).
+
+    Les épisodes hérités de TV Time ne sont pas toujours numérotés comme sur TMDB
+    (One Piece, Pokémon…). Si la saison compte plus d'épisodes chez nous que chez TMDB,
+    la numérotation diverge : aucune miniature plutôt que des miniatures fausses. Les
+    spéciaux rangés dans une saison régulière n'ont pas d'équivalent TMDB et sont ignorés.
+    """
+    series = db.tracked_series(user_id, uuid)
+    if not series:
+        raise HTTPException(404, "Série introuvable")
+    tmdb_id = series[0]["tmdb_id"]
+    key = enrich.get_api_key()
+    if not tmdb_id or not key:
+        return []
+    local = [e for e in db.tracked_episodes(user_id, uuid)
+             if e["season_number"] == season and (season == 0 or not e["special"])]
+    tmdb = enrich.fetch_season_episodes(tmdb_id, season, key) or []
+    if len(local) > len(tmdb):
+        return []
+    stills = {e["episode_number"]: e["still_path"] for e in tmdb if e.get("still_path")}
+    return [EpisodeStill(episode_id=e["episode_id"], still_path=stills[e["episode_number"]])
+            for e in local if e["episode_number"] in stills]
 
 
 @router.get("/tmdb/tv/{tmdb_id}/page", response_model=TvPage)

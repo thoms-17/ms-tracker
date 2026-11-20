@@ -176,6 +176,12 @@ class SearchItem(BaseModel):
 class PreviewEpisode(BaseModel):
     episode_number: int
     name: str | None = None
+    still_path: str | None = None   # miniature TMDB de l'épisode
+
+
+class EpisodeStill(BaseModel):
+    episode_id: int
+    still_path: str
 
 
 class PreviewSeason(BaseModel):

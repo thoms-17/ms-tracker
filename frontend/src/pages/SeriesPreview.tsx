@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import CatchUpModal from "../components/CatchUpModal";
+import EpisodeStill from "../components/EpisodeStill";
 import { episodeCode } from "../format";
 import { refreshAfterWatch } from "../refresh";
 import BackLink from "../components/BackLink";
@@ -122,6 +123,7 @@ function PreviewSeasonBlock({ s, open, pending, onPick }: {
   onPick: (episodeNumber: number) => void;
 }) {
   const label = s.season_number === 0 ? "Spéciaux" : `Saison ${s.season_number}`;
+  const avecMiniatures = s.episodes.some((e) => e.still_path);
   return (
     <details className="season" open={open}>
       <summary>
@@ -129,6 +131,7 @@ function PreviewSeasonBlock({ s, open, pending, onPick }: {
       </summary>
       {s.episodes.map((e) => (
         <div className="ep" key={e.episode_number}>
+          {avecMiniatures && <EpisodeStill path={e.still_path} />}
           <span className="num">
             {episodeCode(s.season_number, e.episode_number)}
           </span>
