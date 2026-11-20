@@ -5,6 +5,7 @@ import { api, posterUrl } from "../api";
 import CatchUpModal from "../components/CatchUpModal";
 import { episodeCode } from "../format";
 import { refreshAfterWatch } from "../refresh";
+import BackLink from "../components/BackLink";
 import Spinner from "../components/Spinner";
 import WatchControl from "../components/WatchControl";
 import WatchProviders from "../components/WatchProviders";
@@ -26,7 +27,9 @@ export default function SeriesPreview() {
     mutationFn: (mark: { season: number; number: number; catchUp?: boolean }) => api.trackSeries(id, mark),
     onSuccess: (res) => {
       refreshAfterWatch(qc);
-      nav(`/series/${res.uuid}`);
+      // remplace l'aperçu : « Retour » depuis le détail ne doit pas y revenir (il
+      // renverrait aussitôt au détail, la série étant désormais suivie)
+      nav(`/series/${res.uuid}`, { replace: true });
     },
   });
 
@@ -59,7 +62,7 @@ export default function SeriesPreview() {
 
   return (
     <>
-      <span className="muted" onClick={() => nav(-1)} style={{ cursor: "pointer" }}>← Retour</span>
+      <BackLink />
       <div className="detail-head">
         {url && <img className="detail-poster" src={url} alt={p.title ?? ""} />}
         <div className="detail-meta">

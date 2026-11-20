@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, posterUrl, type UnwatchResult } from "../api";
+import BackLink from "../components/BackLink";
 import Confetti from "../components/Confetti";
 import CatchUpModal from "../components/CatchUpModal";
 import Spinner from "../components/Spinner";
@@ -135,7 +136,7 @@ export default function SeriesDetail() {
   return (
     <>
       {confetti && <Confetti />}
-      <Link to="/" className="muted">← Suivi</Link>
+      <BackLink />
       <div className="detail-head">
         {url ? <img className="detail-poster" src={url} alt={s.title} /> : null}
         <div className="detail-meta">

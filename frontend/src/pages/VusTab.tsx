@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
 import Historique from "../components/Historique";
@@ -30,9 +30,21 @@ const PODIUM = 6;
 export default function VusTab() {
   const seriesQ = useQuery({ queryKey: ["series"], queryFn: api.series });
   const moviesQ = useQuery({ queryKey: ["movies"], queryFn: api.movies });
-  const [mode, setMode] = useState<Mode>("series");
-  const [sort, setSort] = useState<Sort>("recent");
-  const [view, setView] = useState<View>("grid");
+  // Sous-onglet, tri et affichage vivent dans l'URL (?vue=films&tri=az…) : en revenant
+  // d'une fiche, on retrouve l'écran tel qu'on l'a quitté.
+  const [params, setParams] = useSearchParams();
+  const choix = <T extends string>(cle: string, valeurs: readonly T[], defaut: T): [T, (v: T) => void] => {
+    const brut = params.get(cle) as T | null;
+    const valeur = brut && valeurs.includes(brut) ? brut : defaut;
+    const changer = (v: T) => setParams((p) => {
+      if (v === defaut) p.delete(cle); else p.set(cle, v);
+      return p;
+    }, { replace: true }); // un réglage n'est pas une page : pas d'entrée d'historique
+    return [valeur, changer];
+  };
+  const [mode, setMode] = choix<Mode>("vue", ["series", "movies", "historique"], "series");
+  const [sort, setSort] = choix<Sort>("tri", ["recent", "az", "rewatch"], "recent");
+  const [view, setView] = choix<View>("affichage", ["grid", "list"], "grid");
   const [q, setQ] = useState("");
 
   const completed = (seriesQ.data ?? []).filter((s) => s.completion >= 1);

@@ -1,6 +1,7 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, posterUrl } from "../api";
+import BackLink from "../components/BackLink";
 import Spinner from "../components/Spinner";
 import type { TmdbMoviePreview } from "../types";
 import { useOptimisticWatch } from "../watch";
@@ -9,7 +10,6 @@ import WatchProviders from "../components/WatchProviders";
 export default function MoviePreview() {
   const { tmdbId = "" } = useParams();
   const id = Number(tmdbId);
-  const nav = useNavigate();
 
   const prev = useQuery({ queryKey: ["moviePreview", id], queryFn: () => api.moviePreview(id) });
 
@@ -36,7 +36,7 @@ export default function MoviePreview() {
 
   return (
     <>
-      <span className="muted" onClick={() => nav(-1)} style={{ cursor: "pointer" }}>← Retour</span>
+      <BackLink />
       <div className="detail-head">
         {url && <img className="detail-poster" src={url} alt={m.title ?? ""} />}
         <div className="detail-meta">
