@@ -153,5 +153,11 @@ export const api = {
 export const posterUrl = (path: string | null, big = false) =>
   path ? `https://image.tmdb.org/t/p/${big ? "w342" : "w185"}${path}` : null;
 
+export const backdropUrl = (path: string | null) =>
+  path ? `https://image.tmdb.org/t/p/w1280${path}` : null;
+
+export const profileUrl = (path: string | null) =>
+  path ? `https://image.tmdb.org/t/p/w185${path}` : null;
+
 export const logoUrl = (path: string | null) =>
   path ? `https://image.tmdb.org/t/p/w92${path}` : null;

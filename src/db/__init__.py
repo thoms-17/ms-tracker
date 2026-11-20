@@ -23,7 +23,8 @@ from .mutations import (add_episode_watch, add_movie_watch, catch_up_episode,
                         rewatch_season, set_episode_unwatched, set_meta,
                         set_movie_unwatched)
 from .queries import (episode_id_of, get_meta, get_user_id, get_username,
-                      image_coverage, movie_by_tmdb, next_unwatched_episode,
+                      image_coverage, movie_by_tmdb, movie_views_by_tmdb,
+                      next_unwatched_episode,
                       overview, recent_watches,
                       series_uuid_by_tmdb, titles, tracked_episodes, tracked_series,
                       upcoming_episodes, watch_log, watch_minutes, watched_movies)
@@ -38,7 +39,7 @@ from .tmdb import (add_movie_from_tmdb, add_series_from_tmdb,
 __all__ = [
     "DB_PATH", "NotOwned", "connect", "get_conn", "now", "init_db",
     "tracked_series", "tracked_episodes", "next_unwatched_episode", "watched_movies",
-    "watch_minutes", "overview", "watch_log", "titles",
+    "watch_minutes", "overview", "watch_log", "titles", "movie_views_by_tmdb",
     "get_user_id", "get_username", "get_or_create_user",
     "series_uuid_by_tmdb", "episode_id_of", "image_coverage",
     "get_meta", "set_meta", "upcoming_episodes", "movie_by_tmdb", "recent_watches",

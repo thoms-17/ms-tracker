@@ -261,3 +261,75 @@ def fetch_recommendations(media: str, tmdb_id: int, key: str) -> list[dict]:
             "vote_count": res.get("vote_count") or 0,
         })
     return out
+
+
+def _year(date: str | None) -> str | None:
+    return (date or "")[:4] or None
+
+
+def _trailer(videos: list[dict]) -> str | None:
+    """Clé YouTube de la bande-annonce : en français si elle existe, sinon en anglais."""
+    trailers = [v for v in videos if v.get("site") == "YouTube" and v.get("type") == "Trailer"]
+    for lang in ("fr", "en", None):
+        for v in trailers:
+            if lang is None or v.get("iso_639_1") == lang:
+                return v.get("key")
+    return None
+
+
+def fetch_movie_page(tmdb_id: int, key: str) -> dict | None:
+    """Tout ce qu'affiche la page d'un film, en deux appels TMDB au plus (fiche avec
+    casting, vidéos et films proches ; puis la saga s'il appartient à une collection).
+    None si la fiche ne répond pas."""
+    try:
+        r = requests.get(f"{BASE}/movie/{tmdb_id}", params={
+            "api_key": key, "language": "fr-FR",
+            "append_to_response": "credits,videos,recommendations",
+            "include_video_language": "fr,en",
+        }, timeout=10)
+        if r.status_code != 200:
+            return None
+        det = r.json()
+    except requests.RequestException:
+        return None
+
+    credits = det.get("credits") or {}
+    page = {
+        "title": det.get("title"),
+        "year": int(det["release_date"][:4]) if (det.get("release_date") or "")[:4].isdigit() else None,
+        "release_date": det.get("release_date") or None,
+        "runtime": det.get("runtime"),
+        "poster_path": det.get("poster_path"),
+        "backdrop_path": det.get("backdrop_path"),
+        "overview": det.get("overview") or None,
+        "tagline": det.get("tagline") or None,
+        "genre_ids": _genre_ids(det),
+        "vote_average": det.get("vote_average") or None,
+        "vote_count": det.get("vote_count") or 0,
+        "directors": [c["name"] for c in credits.get("crew", []) if c.get("job") == "Director"][:3],
+        # TMDB laisse les rôles en anglais : « (voice) » est la seule mention courante à traduire
+        "cast": [{"name": c.get("name"),
+                  "character": (c.get("character") or "").replace("(voice)", "(voix)") or None,
+                  "profile_path": c.get("profile_path")} for c in credits.get("cast", [])[:12]],
+        "trailer_key": _trailer((det.get("videos") or {}).get("results", [])),
+        "similar": [{"tmdb_id": m.get("id"), "title": m.get("title"), "year": _year(m.get("release_date")),
+                     "poster_path": m.get("poster_path")}
+                    for m in (det.get("recommendations") or {}).get("results", []) if m.get("poster_path")][:18],
+        "collection": None,
+    }
+
+    coll = det.get("belongs_to_collection")
+    if coll and coll.get("id"):
+        try:
+            c = requests.get(f"{BASE}/collection/{coll['id']}",
+                             params={"api_key": key, "language": "fr-FR"}, timeout=10)
+            parts = c.json().get("parts", []) if c.status_code == 200 else []
+        except requests.RequestException:
+            parts = []
+        # Ordre de sortie ; les films sans date (annoncés) en dernier.
+        parts.sort(key=lambda m: m.get("release_date") or "9999")
+        if len(parts) > 1:
+            page["collection"] = {"name": coll.get("name"), "parts": [
+                {"tmdb_id": m.get("id"), "title": m.get("title"), "year": _year(m.get("release_date")),
+                 "poster_path": m.get("poster_path")} for m in parts]}
+    return page

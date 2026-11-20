@@ -176,6 +176,15 @@ export interface TmdbSeriesPreview {
   tracked_uuid: string | null;
 }
 
+/** Autre film affiché sur la page d'un film (saga, films proches). */
+export interface MovieLink {
+  tmdb_id: number;
+  title: string | null;
+  year: string | null;
+  poster_path: string | null;
+  watched_count: number;
+}
+
 export interface TmdbMoviePreview {
   tmdb_id: number;
   title: string | null;
@@ -184,6 +193,22 @@ export interface TmdbMoviePreview {
   runtime: number | null;
   watched_count: number;
   uuid: string | null;
+  backdrop_path: string | null;
+  release_date: string | null;
+  overview: string | null;
+  tagline: string | null;
+  genres: string[];
+  /** Note TMDB sur 10. */
+  vote_average: number | null;
+  vote_count: number;
+  directors: string[];
+  cast: { name: string | null; character: string | null; profile_path: string | null }[];
+  /** Vidéo YouTube de la bande-annonce. */
+  trailer_key: string | null;
+  /** Saga, par ordre de sortie, le film affiché compris. */
+  collection: { name: string | null; parts: MovieLink[] } | null;
+  /** Films proches que l'utilisateur n'a pas vus. */
+  similar: MovieLink[];
 }
 
 /** Visionnages datés d'une période (année, mois ou jour de la semaine). */

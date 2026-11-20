@@ -201,6 +201,15 @@ def movie_by_tmdb(user_id: int, tmdb_id: int) -> dict | None:
     return {"uuid": row[0], "watched_count": row[1]} if row else None
 
 
+def movie_views_by_tmdb(user_id: int) -> dict[int, int]:
+    """Nombre de visionnages de chaque film vu de l'utilisateur, par id TMDB."""
+    with connect() as conn:
+        return dict(conn.execute(
+            "SELECT m.tmdb_id, COUNT(w.id) FROM movies m JOIN watches w ON w.movie_uuid = m.uuid "
+            "WHERE m.user_id=? AND m.tmdb_id IS NOT NULL GROUP BY m.tmdb_id", (user_id,),
+        ).fetchall())
+
+
 def episode_id_of(user_id: int, series_uuid: str, season: int, number: int) -> int | None:
     with connect() as conn:
         row = conn.execute(

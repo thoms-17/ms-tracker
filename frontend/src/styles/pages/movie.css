@@ -1,0 +1,37 @@
+/* Page d'un film : image de fond, fiche, casting (saga et similaires : rangées partagées) */
+.movie-page { position: relative; isolation: isolate; }
+/* Image de fond floutée derrière l'en-tête, qui s'efface vers le bas */
+.movie-backdrop {
+  position: absolute; z-index: -1; top: -24px; left: 0; right: 0; height: 380px;
+  background-size: cover; background-position: center 20%;
+  opacity: 0.32; border-radius: 0 0 24px 24px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent);
+  mask-image: linear-gradient(to bottom, #000 35%, transparent);
+}
+.movie-tagline { margin: -2px 0 10px; font-style: italic; color: var(--text); opacity: 0.85; }
+.movie-infos { margin: 0 0 6px; font-size: 14px; }
+.movie-score { color: #f5c451; font-weight: 700; } /* étoile dorée, comme les notes de TMDB */
+.movie-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.movie-actions a.btn {
+  display: inline-block; background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text);
+  border-radius: 999px; padding: 6px 12px; font-size: 13px;
+}
+.movie-actions a.btn:hover { border-color: rgba(255, 255, 255, 0.3); }
+.movie-seen { font-size: 17px; margin-right: 4px; }
+
+.movie-section { margin-top: 26px; }
+.movie-overview { max-width: 720px; margin: 0; line-height: 1.55; }
+
+/* Casting : photos rondes à faire défiler */
+.cast-row { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+.cast-card { flex: 0 0 auto; width: 92px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.cast-photo {
+  width: 76px; height: 76px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+  background: var(--glass); border: 1px solid var(--glass-brd);
+}
+.cast-photo.ph { display: grid; place-items: center; font-size: 26px; font-weight: 700; color: var(--muted); }
+.cast-name { font-size: 12px; font-weight: 600; line-height: 1.25; }
+.cast-role {
+  font-size: 11px; color: var(--muted); line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}

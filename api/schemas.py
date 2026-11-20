@@ -194,6 +194,26 @@ class TmdbSeriesPreview(BaseModel):
     tracked_uuid: str | None = None
 
 
+class CastMember(BaseModel):
+    name: str | None = None
+    character: str | None = None
+    profile_path: str | None = None
+
+
+class MovieLink(BaseModel):
+    """Autre film affiché sur la page d'un film (saga, films proches)."""
+    tmdb_id: int
+    title: str | None = None
+    year: str | None = None
+    poster_path: str | None = None
+    watched_count: int = 0   # visionnages de l'utilisateur
+
+
+class MovieCollection(BaseModel):
+    name: str | None = None
+    parts: list[MovieLink]   # par ordre de sortie, le film affiché compris
+
+
 class TmdbMoviePreview(BaseModel):
     tmdb_id: int
     title: str | None = None
@@ -202,6 +222,18 @@ class TmdbMoviePreview(BaseModel):
     runtime: int | None = None
     watched_count: int
     uuid: str | None = None  # présent si le film est déjà dans la bibliothèque
+    backdrop_path: str | None = None
+    release_date: str | None = None   # 'AAAA-MM-JJ'
+    overview: str | None = None
+    tagline: str | None = None
+    genres: list[str] = []
+    vote_average: float | None = None  # note TMDB sur 10
+    vote_count: int = 0
+    directors: list[str] = []
+    cast: list[CastMember] = []
+    trailer_key: str | None = None     # vidéo YouTube
+    collection: MovieCollection | None = None
+    similar: list[MovieLink] = []      # films proches que l'utilisateur n'a pas vus
 
 
 class UnwatchResult(BaseModel):

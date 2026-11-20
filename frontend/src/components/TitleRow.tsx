@@ -5,6 +5,8 @@ export interface RowItem {
   title: string | null;
   year: string | null;
   poster_path: string | null;
+  /** Pastille sur l'affiche (ex. « vu ×2 »). */
+  badge?: string;
 }
 
 /**
@@ -34,6 +36,7 @@ export default function TitleRow<T extends RowItem>({ title, items, onPick, onDi
               ) : (
                 <div className="trending-poster ph" />
               )}
+              {it.badge && <span className="podium-count">{it.badge}</span>}
               <span className="trending-name">{it.title}</span>
               {it.year && <span className="trending-year">{it.year}</span>}
             </button>

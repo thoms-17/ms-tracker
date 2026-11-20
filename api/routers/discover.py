@@ -10,7 +10,8 @@ from src import db
 from src import enrich
 
 from .. import deps
-from ..schemas import (PreviewEpisode, PreviewSeason, Recommendation, Recommendations,
+from ..schemas import (CastMember, MovieCollection, MovieLink, PreviewEpisode, PreviewSeason,
+                       Recommendation, Recommendations,
                        SearchItem, TmdbMoviePreview,
                        TmdbSeriesPreview, TrackRequest, Trending, TrendingItem,
                        UuidResponse, WatchProviders)
@@ -109,13 +110,32 @@ def watch_providers(media: str, tmdb_id: int):
 
 @router.get("/tmdb/movie/{tmdb_id}", response_model=TmdbMoviePreview)
 def movie_preview(tmdb_id: int, user_id: int = Uid):
-    key = _key()
-    meta = enrich.fetch_movie_meta(tmdb_id, key)
+    """Page d'un film : fiche TMDB complète, saga et films proches, avec ses visionnages."""
+    page = enrich.fetch_movie_page(tmdb_id, _key())
+    if page is None:
+        raise HTTPException(404, "Film introuvable sur TMDB")
     mv = db.movie_by_tmdb(user_id, tmdb_id)
+    views = db.movie_views_by_tmdb(user_id)
+
+    def link(m: dict) -> MovieLink:
+        return MovieLink(**m, watched_count=views.get(m["tmdb_id"], 0))
+
+    coll = page["collection"]
     return TmdbMoviePreview(
-        tmdb_id=tmdb_id, title=meta.get("title"), year=meta.get("year"),
-        poster_path=meta.get("poster_path"), runtime=meta.get("runtime"),
-        watched_count=mv["watched_count"] if mv else 0, uuid=mv["uuid"] if mv else None)
+        tmdb_id=tmdb_id, title=page["title"], year=page["year"], poster_path=page["poster_path"],
+        runtime=page["runtime"], watched_count=mv["watched_count"] if mv else 0,
+        uuid=mv["uuid"] if mv else None,
+        backdrop_path=page["backdrop_path"], release_date=page["release_date"],
+        overview=page["overview"], tagline=page["tagline"],
+        genres=enrich.genre_names(page["genre_ids"]),
+        vote_average=page["vote_average"], vote_count=page["vote_count"],
+        directors=page["directors"], cast=[CastMember(**c) for c in page["cast"]],
+        trailer_key=page["trailer_key"],
+        collection=MovieCollection(name=coll["name"], parts=[link(m) for m in coll["parts"]]) if coll else None,
+        # à découvrir : ni les films déjà vus, ni ceux déjà affichés dans la saga
+        similar=[link(m) for m in page["similar"] if not views.get(m["tmdb_id"])
+                 and not (coll and any(p["tmdb_id"] == m["tmdb_id"] for p in coll["parts"]))],
+    )
 
 
 @router.post("/tmdb/movie/{tmdb_id}/watch", response_model=UuidResponse)

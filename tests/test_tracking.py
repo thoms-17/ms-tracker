@@ -180,3 +180,33 @@ def test_detail_says_whether_the_series_is_over(client, sql):
     for status, ended in (("Returning Series", False), ("Ended", True), ("Canceled", True)):
         sql("UPDATE series SET tmdb_status=? WHERE series_uuid=?", (status, uuid))
         assert client.get(f"/api/series/{uuid}").json()["ended"] is ended, status
+
+
+def test_movie_page(client, monkeypatch):
+    from src import enrich
+    seen = db.add_movie_from_tmdb(ALICE, 1, "Épisode I", 1999)
+    db.add_movie_watch(ALICE, seen)
+    db.add_movie_watch(ALICE, seen)
+    part = lambda i, t: {"tmdb_id": i, "title": t, "year": "2000", "poster_path": f"/{i}.jpg"}
+    monkeypatch.setattr(enrich, "fetch_movie_page", lambda tmdb_id, key: None if tmdb_id == 404 else {
+        "title": "Épisode II", "year": 2002, "release_date": "2002-05-16", "runtime": 142,
+        "poster_path": "/p.jpg", "backdrop_path": "/b.jpg", "overview": "Résumé", "tagline": "Accroche",
+        "genre_ids": [878, 12], "vote_average": 6.6, "vote_count": 1200, "directors": ["George Lucas"],
+        "cast": [{"name": "Ewan McGregor", "character": "Obi-Wan", "profile_path": "/e.jpg"}],
+        "trailer_key": "abc",
+        "collection": {"name": "Star Wars", "parts": [part(1, "Épisode I"), part(2, "Épisode II")]},
+        "similar": [part(1, "Épisode I"), part(2, "Épisode II"), part(3, "Autre")],
+    })
+    monkeypatch.setattr(enrich, "get_api_key", lambda: "clé")
+
+    m = client.get("/api/tmdb/movie/2").json()
+    assert (m["title"], m["watched_count"], m["uuid"]) == ("Épisode II", 0, None)
+    assert m["genres"] == ["Science-fiction", "Aventure"]
+    assert (m["directors"], m["trailer_key"], m["cast"][0]["character"]) == (["George Lucas"], "abc", "Obi-Wan")
+    assert [(p["title"], p["watched_count"]) for p in m["collection"]["parts"]] == [("Épisode I", 2), ("Épisode II", 0)]
+    # ni les films déjà vus, ni ceux de la saga
+    assert [s["title"] for s in m["similar"]] == ["Autre"]
+
+    mine = client.get("/api/tmdb/movie/1").json()
+    assert (mine["watched_count"], mine["uuid"]) == (2, seen)
+    assert client.get("/api/tmdb/movie/404").status_code == 404
