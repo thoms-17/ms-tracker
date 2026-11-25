@@ -41,8 +41,7 @@ RECENT_DAYS = 14
 def _release_state(air_date: str | None, today: dt.date) -> tuple[bool, bool]:
     """(sorti ?, sorti récemment ?) d'un épisode d'après sa date de sortie.
 
-    NULL = date inconnue (épisodes TV Time jamais datés) : considéré comme sorti,
-    comme avant l'ajout des dates. '' = annoncé par TMDB sans date : pas sorti.
+    NULL = date inconnue (TMDB n'en donne pas) : considéré comme sorti. '' = annoncé par TMDB sans date : pas sorti.
     """
     if air_date is None:
         return True, False
@@ -55,8 +54,8 @@ def _release_state(air_date: str | None, today: dt.date) -> tuple[bool, bool]:
 
 
 def _is_regular(e) -> bool:
-    """Épisode qui compte dans la progression : ni saison 0, ni spécial rangé ailleurs."""
-    return not e["special"] and e["season_number"] != 0
+    """Épisode qui compte dans la progression : tout sauf les spéciaux (saison 0)."""
+    return e["season_number"] != 0
 
 
 def _next_episode(e) -> NextEpisode:
@@ -95,6 +94,7 @@ def series_summaries(user_id: int, uuid: str | None = None) -> list[SeriesSummar
     episodes = _episodes_by_series(user_id, uuid)
     today = dt.date.today()
     recent_since = db.now(days=-RECENT_DAYS)
+    shared = db.shared_with(user_id)
     out = []
     for s in db.tracked_series(user_id, uuid):
         eps = episodes.get(s["series_uuid"], [])
@@ -109,7 +109,7 @@ def series_summaries(user_id: int, uuid: str | None = None) -> list[SeriesSummar
 
         ne = None
         waiting = new_episode = False
-        pending = next((e for e in eps if not e["watched_count"] and not e["special"]), None)
+        pending = next((e for e in eps if not e["watched_count"] and _is_regular(e)), None)
         if pending is not None:
             ne = _next_episode(pending)
             # Tous les épisodes précédents sont vus (c'est le premier non vu) :
@@ -134,6 +134,7 @@ def series_summaries(user_id: int, uuid: str | None = None) -> list[SeriesSummar
             total_rewatch=sum(max(e["watched_count"] - 1, 0) for e in eps),
             # Visionnages complets de la série = min des compteurs de ses épisodes réguliers.
             times_watched=min(e["watched_count"] for e in reg),
+            shared_with=shared.get(s["tmdb_id"], []),
             last_watched=iso(last_watched), last_activity=iso(last_activity),
             next_episode=ne, rewatch=rw,
             waiting=waiting, new_episode=new_episode,
@@ -152,19 +153,14 @@ def series_detail(user_id: int, uuid: str) -> SeriesDetail | None:
     eps = db.tracked_episodes(user_id, uuid)
     seasons = []
     for sn, group in groupby(eps, key=lambda e: e["season_number"]):
-        # TV Time range parfois des spéciaux dans une saison régulière : ils restent
-        # affichés (après les épisodes réguliers) mais ne comptent pas dans le total
-        # de la saison — sinon For All Mankind S4 affiche 19 épisodes au lieu de 10.
-        misfiled = lambda e: bool(e["special"]) and sn != 0  # noqa: E731
-        group = sorted(group, key=misfiled)  # tri stable : l'ordre de diffusion est conservé
-        reg = [e for e in group if not misfiled(e)]
+        group = list(group)
         seasons.append(SeasonGroup(
             season_number=sn, label="Spéciaux" if sn == 0 else f"Saison {sn}",
-            watched=sum(1 for e in reg if e["watched_count"]), total=len(reg),
+            watched=sum(1 for e in group if e["watched_count"]), total=len(group),
             episodes=[
                 EpisodeItem(episode_id=e["episode_id"], season_number=sn,
                             episode_number=e["episode_number"], name=_s(e["name"]),
-                            watched_count=e["watched_count"], special=misfiled(e))
+                            watched_count=e["watched_count"])
                 for e in group
             ]))
     n_episodes = sum(1 for e in eps if _is_regular(e))

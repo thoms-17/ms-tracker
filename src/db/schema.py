@@ -134,6 +134,31 @@ CREATE TABLE IF NOT EXISTS dismissed_recos (
     PRIMARY KEY (user_id, media, tmdb_id),
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS friendships (
+    requester_id INTEGER NOT NULL,         -- celui qui a envoyé la demande
+    addressee_id INTEGER NOT NULL,
+    status       TEXT NOT NULL,            -- 'pending' | 'accepted'
+    created_at   TEXT,
+    PRIMARY KEY (requester_id, addressee_id),
+    FOREIGN KEY(requester_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(addressee_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS shared_series (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    tmdb_id     INTEGER NOT NULL,          -- chaque compte a sa copie : on partage la série TMDB
+    inviter_id  INTEGER NOT NULL,
+    invitee_id  INTEGER NOT NULL,
+    status      TEXT NOT NULL,             -- 'pending' | 'accepted'
+    title       TEXT,                      -- pour afficher l'invitation chez l'invité
+    poster_path TEXT,
+    paused      INTEGER DEFAULT 0,         -- 1 : chacun avance seul, rien n'est recopié
+    created_at  TEXT,
+    UNIQUE (tmdb_id, inviter_id, invitee_id),
+    FOREIGN KEY(inviter_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(invitee_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_friend_addressee ON friendships(addressee_id);
+CREATE INDEX IF NOT EXISTS idx_share_tmdb ON shared_series(tmdb_id);
 CREATE INDEX IF NOT EXISTS idx_watch_ep ON watches(episode_id);
 CREATE INDEX IF NOT EXISTS idx_watch_mv ON watches(movie_uuid);
 CREATE INDEX IF NOT EXISTS idx_ep_series ON episodes(series_uuid);
@@ -168,6 +193,8 @@ def init_db() -> None:
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL"
         )
+        # Visionnage partagé : pause (bases créées avec la toute première version des partages)
+        ensure_column(conn, "shared_series", "paused", "INTEGER DEFAULT 0")
         _migrate_multiuser(conn)
 
 

@@ -25,17 +25,16 @@ def day(offset: int) -> str:
     return (dt.date.today() + dt.timedelta(days=offset)).isoformat()
 
 
-def test_progress_counts_only_regular_episodes(client, sql):
+def test_progress_counts_only_regular_episodes(client):
     uuid = make_series(seasons={0: 2, 1: 3, 2: 2})
-    sql("UPDATE episodes SET special=1 WHERE id=?", (ep(uuid, 2, 2),))  # spécial en saison régulière
     first, again = ago(days=30), ago(days=20)
     watch(uuid, 0, 1, ago(days=40))
     watch(uuid, 1, 1, first)
     watch(uuid, 1, 1, again)  # revu : compte comme activité, pas comme progression
 
     s = summary(client, uuid)
-    assert (s["n_watched"], s["n_episodes"]) == (1, 4)
-    assert s["completion"] == 0.25
+    assert (s["n_watched"], s["n_episodes"]) == (1, 5)
+    assert s["completion"] == 0.2
     assert s["total_rewatch"] == 1
     assert s["times_watched"] == 0
     assert s["next_episode"]["season"] == 1 and s["next_episode"]["number"] == 2
@@ -45,12 +44,9 @@ def test_progress_counts_only_regular_episodes(client, sql):
     assert s["recent"] is False and s["waiting"] is False and s["rewatch"] is None
 
     detail = client.get(f"/api/series/{uuid}").json()
-    assert (detail["n_watched"], detail["n_episodes"], detail["completion"]) == (1, 4, 0.25)
+    assert (detail["n_watched"], detail["n_episodes"], detail["completion"]) == (1, 5, 0.2)
     assert [(g["label"], g["watched"], g["total"]) for g in detail["seasons"]] == [
-        ("Spéciaux", 1, 2), ("Saison 1", 1, 3), ("Saison 2", 0, 1)]
-    # le spécial rangé en saison 2 reste affiché, après les épisodes réguliers
-    assert [(e["episode_number"], e["special"]) for e in detail["seasons"][2]["episodes"]] == [
-        (1, False), (2, True)]
+        ("Spéciaux", 1, 2), ("Saison 1", 1, 3), ("Saison 2", 0, 2)]
 
 
 def test_series_without_regular_episode_is_not_listed(client):

@@ -120,7 +120,7 @@ def _print_secret(username: str, pw: str, generated: bool):
 
 
 def main():
-    p = argparse.ArgumentParser(description="Gestion des comptes TV Time")
+    p = argparse.ArgumentParser(description="Gestion des comptes MS Tracker")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     for name, fn, needs_pw in [

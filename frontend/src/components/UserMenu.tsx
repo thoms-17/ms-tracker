@@ -1,14 +1,19 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { useCloseOnScroll } from "../hooks";
 import { clearPersistedCache } from "../persist";
+import { pendingCount, useSocial } from "../social";
 import VersionInfo from "./VersionInfo";
 
-/** Pastille du profil connecté + menu de déconnexion. */
+/** Pastille du profil connecté + menu (amis, déconnexion). */
 export default function UserMenu({ username }: { username: string }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const nav = useNavigate();
+  // Demandes d'ami et invitations reçues : pastille sur l'avatar et dans le menu.
+  const enAttente = pendingCount(useSocial().data);
   const logout = useMutation({
     mutationFn: api.logout,
     onSuccess: () => {
@@ -28,6 +33,7 @@ export default function UserMenu({ username }: { username: string }) {
         aria-haspopup="menu" aria-expanded={open} title={username}
       >
         <span className="avatar">{username.slice(0, 1).toUpperCase()}</span>
+        {enAttente > 0 && <span className="notif-dot" aria-label={`${enAttente} en attente`} />}
         <span className="usermenu-name">{username}</span>
       </button>
       {open && (
@@ -37,6 +43,9 @@ export default function UserMenu({ username }: { username: string }) {
             <div className="usermenu-head">
               Connecté en tant que<br /><strong>{username}</strong>
             </div>
+            <button className="menu-item" role="menuitem" onClick={() => { setOpen(false); nav("/amis"); }}>
+              Amis{enAttente > 0 && <span className="notif-count">{enAttente}</span>}
+            </button>
             <button
               className="menu-item danger" disabled={logout.isPending}
               onClick={() => logout.mutate()}

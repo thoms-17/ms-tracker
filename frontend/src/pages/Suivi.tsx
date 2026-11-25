@@ -35,7 +35,7 @@ export default function Suivi() {
   const all = series.data ?? [];
   // Compte sans aucune donnée → on oriente vers la recherche pour démarrer son suivi.
   if (all.length === 0 && (movies.data?.length ?? 0) === 0) return <EmptySuivi />;
-  // Comme TV Time : ce qu'on regarde en ce moment d'abord, le reste replié en dessous.
+  // Ce qu'on regarde en ce moment d'abord, le reste replié en dessous.
   const { recent, stale } = enCours(all);
   const completed = all.filter((s) => s.completion >= 1);
 

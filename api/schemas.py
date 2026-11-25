@@ -93,6 +93,7 @@ class SeriesSummary(BaseModel):
     completion: float
     total_rewatch: int
     times_watched: int  # nb de visionnages complets (min des épisodes réguliers)
+    shared_with: list[str] = []  # amis avec qui la série est regardée (visionnage partagé)
     last_watched: str | None = None
     last_activity: str | None = None  # dernier visionnage, revisionnages compris
     next_episode: NextEpisode | None = None
@@ -112,7 +113,6 @@ class EpisodeItem(BaseModel):
     episode_number: int
     name: str | None = None
     watched_count: int
-    special: bool = False  # spécial rangé dans une saison régulière : hors compteur
 
 
 class SeasonGroup(BaseModel):
@@ -358,7 +358,7 @@ class StatsTitle(BaseModel):
 class Stats(BaseModel):
     minutes: int                 # temps total, revisionnages compris
     views: int                   # nombre de visionnages enregistrés
-    # Visionnages enregistrés en lot (import TV Time, saison cochée d'un coup, journée de
+    # Visionnages enregistrés en lot (import, saison cochée d'un coup, journée de
     # plus de 24 h) : sans date réelle, ils sont absents de `years`, `months` et `weekdays`.
     undated_views: int
     dated_since: str | None = None
@@ -385,3 +385,57 @@ class Recommendation(BaseModel):
 class Recommendations(BaseModel):
     tv: list[Recommendation]
     movie: list[Recommendation]
+
+
+# ------------------------------------------------- amis et visionnage partagé ---
+
+class Person(BaseModel):
+    user_id: int
+    username: str
+
+
+class ShareItem(BaseModel):
+    """Série partagée (ou proposée) avec un ami."""
+    id: int
+    tmdb_id: int
+    title: str | None = None
+    poster_path: str | None = None
+    user_id: int                 # l'ami concerné
+    username: str
+    paused: bool = False         # en pause : chacun avance seul
+    ahead: int = 0               # épisodes que l'ami a vus et pas moi
+
+
+class Social(BaseModel):
+    friends: list[Person]
+    incoming: list[Person]       # demandes d'ami reçues
+    outgoing: list[Person]       # demandes d'ami envoyées, en attente
+    share_invites: list[ShareItem]  # invitations à un visionnage partagé reçues
+    shared: list[ShareItem]      # visionnages partagés en cours
+
+
+class SeriesShare(BaseModel):
+    id: int
+    status: str                  # 'pending' | 'accepted'
+    incoming: bool               # invitation reçue (sinon envoyée)
+    user_id: int
+    username: str
+    paused: bool = False
+    ahead: int = 0               # épisodes que l'ami a vus et pas moi
+
+
+class FriendRequest(BaseModel):
+    username: str
+
+
+class ShareRequest(BaseModel):
+    tmdb_id: int
+    friend_id: int
+
+
+class AlignResult(BaseModel):
+    added: int                   # épisodes marqués par la mise au niveau
+
+
+class StatusResult(BaseModel):
+    status: str                  # 'pending' | 'accepted'

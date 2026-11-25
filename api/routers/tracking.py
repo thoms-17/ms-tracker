@@ -47,7 +47,7 @@ def watch_episode(episode_id: int, user_id: int = Uid):
 
 @router.post("/episodes/{episode_id}/catch-up", status_code=204)
 def catch_up_episode(episode_id: int, user_id: int = Uid):
-    """Marque l'épisode + tous les précédents non vus de la saison (façon TV Time)."""
+    """Marque l'épisode + tous les précédents non vus de la série."""
     db.catch_up_episode(user_id, episode_id)
 
 

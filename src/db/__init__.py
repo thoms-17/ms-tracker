@@ -32,6 +32,10 @@ from .reco import (cached_features, dismiss_recommendation, dismissed_keys,
                    library_keys, recommendations, replace_recommendations,
                    save_features)
 from .schema import get_or_create_user, init_db
+from .social import (SocialError, accept_friend, accept_share, align_share,
+                     end_share, invite_to_share, remove_friend, request_friend,
+                     series_shares, set_share_paused, shared_with,
+                     social_overview)
 from .tmdb import (add_movie_from_tmdb, add_series_from_tmdb,
                    refresh_series_from_tmdb, sync_genres, sync_images,
                    sync_updates)
@@ -51,6 +55,10 @@ __all__ = [
     # recommandations
     "library_keys", "cached_features", "save_features", "dismissed_keys",
     "dismiss_recommendation", "replace_recommendations", "recommendations",
+    # amis et visionnage partagé
+    "SocialError", "request_friend", "accept_friend", "remove_friend", "social_overview",
+    "series_shares", "shared_with", "invite_to_share", "accept_share", "end_share",
+    "align_share", "set_share_paused",
     # auth
     "verify_credentials", "set_password", "create_session", "delete_session",
     "delete_user_sessions", "user_id_for_session", "purge_expired_sessions",

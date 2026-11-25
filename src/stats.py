@@ -25,7 +25,7 @@ def watch_minutes(user_id: int) -> dict:
     }
 
 
-# Un visionnage n'est pas toujours daté pour de bon : import TV Time d'origine, saison
+# Un visionnage n'est pas toujours daté pour de bon : import d'origine, saison
 # cochée d'un coup, rattrapage. Deux indices le trahissent — plusieurs visionnages à la
 # même seconde, ou une journée qui dépasse 24 h de visionnage. Ces visionnages sont
 # écartés des statistiques temporelles (ils comptent toujours dans les totaux).

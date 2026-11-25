@@ -27,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src import db
 
-from .routers import auth, discover, stats, tracking, upcoming
+from .routers import auth, discover, social, stats, tracking, upcoming
 
 _ROOT = Path(__file__).resolve().parent.parent
 
@@ -97,6 +97,7 @@ app.include_router(tracking.router, prefix="/api")
 app.include_router(discover.router, prefix="/api")
 app.include_router(upcoming.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
+app.include_router(social.router, prefix="/api")
 
 
 @app.exception_handler(db.NotOwned)

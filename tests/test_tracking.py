@@ -91,20 +91,6 @@ def test_rewatch_season_then_remove_one_pass(client):
     assert client.delete(f"/api/series/{uuid}/seasons/1/watch").json() == {"untracked": True}
 
 
-def test_season_actions_skip_specials_filed_in_a_regular_season(client, sql):
-    """TV Time range des spéciaux dans une saison régulière : hors actions de saison."""
-    uuid = make_series(seasons={1: 3})
-    sql("UPDATE episodes SET special=1 WHERE id=?", (ep(uuid, 1, 3),))
-
-    client.post(f"/api/series/{uuid}/seasons/1/mark?watched=true")
-    assert counts(client, uuid) == {(1, 1): 1, (1, 2): 1, (1, 3): 0}
-    season = client.get(f"/api/series/{uuid}").json()["seasons"][0]
-    assert (season["watched"], season["total"]) == (2, 2)
-
-    client.post(f"/api/series/{uuid}/seasons/1/rewatch")
-    assert counts(client, uuid) == {(1, 1): 2, (1, 2): 2, (1, 3): 0}
-
-
 def test_season_zero_actions_cover_all_specials(client):
     uuid = make_series(seasons={0: 2, 1: 1})
     client.post(f"/api/series/{uuid}/seasons/0/mark?watched=true")
@@ -234,10 +220,9 @@ def test_series_page(client, monkeypatch):
     assert client.get("/api/tmdb/tv/404/page").status_code == 404
 
 
-def test_season_stills(client, sql, monkeypatch):
+def test_season_stills(client, monkeypatch):
     from src import enrich
     uuid = make_series(tmdb_id=7, seasons={1: 3, 2: 3})
-    sql("UPDATE episodes SET special=1 WHERE id=?", (ep(uuid, 2, 3),))   # spécial TV Time rangé en saison 2
     tmdb = {
         1: [{"episode_number": n, "still_path": f"/s1e{n}.jpg"} for n in (1, 2)],           # 2 chez TMDB, 3 chez nous
         2: [{"episode_number": 1, "still_path": "/s2e1.jpg"}, {"episode_number": 2, "still_path": None},
@@ -248,7 +233,29 @@ def test_season_stills(client, sql, monkeypatch):
 
     assert client.get(f"/api/series/{uuid}/seasons/1/stills").json() == []      # numérotation divergente
     assert client.get(f"/api/series/{uuid}/seasons/2/stills").json() == [
-        {"episode_id": ep(uuid, 2, 1), "still_path": "/s2e1.jpg"}]              # ni sans image, ni spécial
+        {"episode_id": ep(uuid, 2, 1), "still_path": "/s2e1.jpg"},
+        {"episode_id": ep(uuid, 2, 3), "still_path": "/s2e3.jpg"}]              # rien pour l'épisode sans image
     assert client.get(f"/api/series/{uuid}/seasons/9/stills").json() == []
     client.user = BOB
     assert client.get(f"/api/series/{uuid}/seasons/2/stills").status_code == 404
+
+
+def test_refresh_adds_new_episodes_only_when_numbering_matches_tmdb(base, monkeypatch):
+    from src import enrich
+    from src.db import tmdb as sync
+    uuid = make_series(tmdb_id=7, seasons={0: 1, 1: 3, 2: 1})
+
+    def structure(eps_s1, eps_s2):
+        return [{"season_number": 0, "episodes": [{"episode_number": 1}, {"episode_number": 2}]},
+                {"season_number": 1, "episodes": [{"episode_number": n} for n in range(1, eps_s1 + 1)]},
+                {"season_number": 2, "episodes": [{"episode_number": n, "name": f"Nouveau {n}"}
+                                                  for n in range(1, eps_s2 + 1)]}]
+    monkeypatch.setattr(enrich, "fetch_tv_structure", lambda tmdb_id, key: structure(4, 3))
+    # saison 1 : 4 épisodes chez TMDB, 3 chez nous → numérotation divergente, rien n'est ajouté
+    assert sync.refresh_series_from_tmdb(ALICE, uuid, "clé") == {"status": "unsafe", "added": 0}
+
+    monkeypatch.setattr(enrich, "fetch_tv_structure", lambda tmdb_id, key: structure(3, 3))
+    # structure identique : seule la fin de la saison en cours arrive (pas les spéciaux)
+    assert sync.refresh_series_from_tmdb(ALICE, uuid, "clé") == {"status": "ok", "added": 2}
+    assert db.episode_id_of(ALICE, uuid, 2, 3) is not None
+    assert db.episode_id_of(ALICE, uuid, 0, 2) is None

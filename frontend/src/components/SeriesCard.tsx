@@ -30,6 +30,8 @@ export default function SeriesCard({ s, showNext, onComplete }: {
   const url = posterUrl(s.poster_path);
   // Dans « En cours », un revisionnage affiche la progression de CE passage.
   const rw = showNext ? s.rewatch : null;
+  // ?? [] : une liste gardée en cache sur l'appareil avant cette version n'a pas le champ
+  const avec = s.shared_with ?? [];
   const [vus, total] = rw ? [rw.watched, rw.total] : [s.n_watched, s.n_episodes];
   const next = useOptimisticWatch<SeriesSummary[]>({
     // revisionnage : +1 visionnage sur le prochain épisode du passage (déjà vu, donc
@@ -55,6 +57,7 @@ export default function SeriesCard({ s, showNext, onComplete }: {
           {url ? <img className="poster" src={url} alt={s.title} /> : <div className="poster" />}
           {showNext && s.new_episode && <span className="new-badge">Nouvel épisode</span>}
           {rw && <span className="new-badge rewatch-badge">Revisionnage · {rw.pass_number}e</span>}
+          {avec.length > 0 && <span className="new-badge shared-badge">Avec {avec.join(", ")}</span>}
         </Link>
         {rw && (
           <button type="button" className="dismiss-btn" aria-label="Retirer d'En cours"

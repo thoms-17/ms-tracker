@@ -20,11 +20,6 @@
 .ep .num { color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .ep-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ep.seen .ep-name { color: var(--muted); }
-.ep-tag {
-  display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: 6px;
-  font-size: 11px; font-weight: 600; vertical-align: 1px;
-  color: var(--muted); border: 1px solid var(--glass-brd);
-}
 
 /* Miniature d'un épisode (16:9), en tête de ligne */
 .ep-still {

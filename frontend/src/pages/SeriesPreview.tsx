@@ -8,6 +8,7 @@ import { episodeCode } from "../format";
 import { refreshAfterWatch } from "../refresh";
 import BackLink from "../components/BackLink";
 import { SeriesBottom, SeriesFacts, useTvPage } from "../components/SeriesExtras";
+import ShareButton from "../components/ShareButton";
 import Spinner from "../components/Spinner";
 import { Backdrop, Synopsis, TrailerLink } from "../components/TmdbExtras";
 import WatchControl from "../components/WatchControl";
@@ -78,9 +79,10 @@ export default function SeriesPreview() {
           <SeriesFacts page={page.data}
             extra={`${p.n_seasons} saison${p.n_seasons > 1 ? "s" : ""} · ${p.n_episodes} épisodes`} />
           <p className="muted media-infos">Pas encore dans ton suivi</p>
-          {page.data?.trailer_key && (
-            <div className="media-actions"><TrailerLink youtubeKey={page.data.trailer_key} /></div>
-          )}
+          <div className="media-actions">
+            <ShareButton tmdbId={id} />
+            <TrailerLink youtubeKey={page.data?.trailer_key ?? null} />
+          </div>
           <WatchProviders media="tv" tmdbId={id} />
         </div>
       </div>

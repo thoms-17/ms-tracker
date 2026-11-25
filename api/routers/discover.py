@@ -92,10 +92,9 @@ def tv_preview(tmdb_id: int, user_id: int = Uid):
 def season_stills(uuid: str, season: int, user_id: int = Uid):
     """Miniatures TMDB des épisodes d'une saison suivie (chargées quand la saison s'ouvre).
 
-    Les épisodes hérités de TV Time ne sont pas toujours numérotés comme sur TMDB
-    (One Piece, Pokémon…). Si la saison compte plus d'épisodes chez nous que chez TMDB,
-    la numérotation diverge : aucune miniature plutôt que des miniatures fausses. Les
-    spéciaux rangés dans une saison régulière n'ont pas d'équivalent TMDB et sont ignorés.
+    Les épisodes sont numérotés comme sur TMDB : la miniature se retrouve par le numéro.
+    Si la saison compte plus d'épisodes chez nous que chez TMDB (TMDB a renuméroté
+    depuis), aucune miniature plutôt que des miniatures fausses.
     """
     series = db.tracked_series(user_id, uuid)
     if not series:
@@ -105,7 +104,7 @@ def season_stills(uuid: str, season: int, user_id: int = Uid):
     if not tmdb_id or not key:
         return []
     local = [e for e in db.tracked_episodes(user_id, uuid)
-             if e["season_number"] == season and (season == 0 or not e["special"])]
+             if e["season_number"] == season]
     tmdb = enrich.fetch_season_episodes(tmdb_id, season, key) or []
     if len(local) > len(tmdb):
         return []

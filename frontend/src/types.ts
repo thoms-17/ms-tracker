@@ -25,6 +25,8 @@ export interface SeriesSummary {
   n_episodes: number;
   completion: number;
   total_rewatch: number;
+  /** Amis avec qui la série est regardée (visionnage partagé). */
+  shared_with?: string[];
   times_watched: number;
   last_watched: string | null;
   /** Dernier visionnage, revisionnages compris. */
@@ -45,8 +47,6 @@ export interface EpisodeItem {
   episode_number: number;
   name: string | null;
   watched_count: number;
-  /** Spécial rangé dans une saison régulière : affiché, mais hors compteurs. */
-  special: boolean;
 }
 
 export interface SeasonGroup {
@@ -289,4 +289,40 @@ export interface Recommendation {
 export interface Recommendations {
   tv: Recommendation[];
   movie: Recommendation[];
+}
+
+// ------------------------------------------------- amis et visionnage partagé ---
+export interface Person {
+  user_id: number;
+  username: string;
+}
+
+/** Série partagée (ou proposée) avec un ami. */
+export interface ShareItem {
+  id: number;
+  tmdb_id: number;
+  title: string | null;
+  poster_path: string | null;
+  user_id: number;
+  username: string;
+  paused: boolean;   // en pause : chacun avance seul
+  ahead: number;     // épisodes que l'ami a vus et pas moi
+}
+
+export interface Social {
+  friends: Person[];
+  incoming: Person[];        // demandes d'ami reçues
+  outgoing: Person[];        // demandes envoyées, en attente
+  share_invites: ShareItem[]; // invitations à un visionnage partagé reçues
+  shared: ShareItem[];       // visionnages partagés en cours
+}
+
+export interface SeriesShare {
+  id: number;
+  status: "pending" | "accepted";
+  incoming: boolean;
+  user_id: number;
+  username: string;
+  paused: boolean;
+  ahead: number;
 }

@@ -7,6 +7,7 @@
   --muted: #a3a29b;
   --accent: #3987e5;
   --good: #1baf7a;
+  --shared: rgba(214, 120, 46, 0.92); /* tag « Avec … » des séries regardées à plusieurs */
   --done: #7c5cd6; /* série vue en entier et terminée pour de bon */
 
   /* Liquid glass : panneaux translucides floutés */

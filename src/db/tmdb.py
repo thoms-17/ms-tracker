@@ -39,10 +39,9 @@ def add_series_from_tmdb(user_id: int, tmdb_id: int, title: str, seasons: list[d
             (su, user_id, title, status, tmdb_id, poster_path or "", _genres_json(genre_ids), now()),
         )
         conn.executemany(
-            "INSERT OR IGNORE INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime,air_date)"
-            " VALUES (?,?,?,?,?,?,?,?)",
-            [(su, s["season_number"], ep["episode_number"], ep.get("name"),
-              int(s["season_number"] == 0), int(s["season_number"] == 0), ep.get("runtime"), ep.get("air_date"))
+            "INSERT OR IGNORE INTO episodes(series_uuid,season_number,episode_number,name,runtime,air_date)"
+            " VALUES (?,?,?,?,?,?)",
+            [(su, s["season_number"], ep["episode_number"], ep.get("name"), ep.get("runtime"), ep.get("air_date"))
              for s in seasons for ep in s["episodes"]],
         )
         # Repli médiane pour d'éventuels épisodes sans durée (comme pour la synchro globale)
@@ -75,7 +74,7 @@ def refresh_series_from_tmdb(user_id: int, series_uuid: str, key: str) -> dict:
     """Ajoute les épisodes nouvellement diffusés d'une série via TMDB, sans rien supprimer.
 
     Garde-fou : n'agit que si la structure historique (saisons passées) correspond à TMDB
-    (mêmes nombres d'épisodes). Sinon la numérotation diverge (ex. One Piece par arcs) et on
+    (mêmes nombres d'épisodes). Sinon la numérotation diverge (TMDB a renuméroté la série) et on
     refuse pour ne pas injecter d'épisodes faux. N'ajoute que la fin de la saison en cours et
     les saisons entièrement nouvelles ; ignore les spéciaux (saison 0).
 
@@ -89,37 +88,24 @@ def refresh_series_from_tmdb(user_id: int, series_uuid: str, key: str) -> dict:
         if not tmdb_id:
             return {"status": "no_tmdb", "added": 0}
 
-        # TV Time range parfois des spéciaux dans une saison régulière (For All Mankind S4 :
-        # 10 épisodes + 9 spéciaux). TMDB, lui, les ignore (For All Mankind) ou les compte
-        # comme épisodes normaux (Black Mirror S2E4 « Blanc comme neige ») : on tient donc
-        # les deux décomptes, sans quoi le verrou bloquerait la série pour toujours.
-        counts: dict[int, list[int]] = {}  # saison -> [réguliers, spéciaux]
-        existing: set[tuple[int, int]] = set()  # (saison, numéro) des épisodes réguliers
-        special_names: dict[int, set[str]] = {}
-        for sn, en, name, sp in conn.execute(
-            "SELECT season_number, episode_number, name, COALESCE(special, 0) FROM episodes WHERE series_uuid=?",
-            (series_uuid,),
+        counts: dict[int, int] = {}  # saison -> nombre d'épisodes
+        existing: set[tuple[int, int]] = set()  # (saison, numéro)
+        for sn, en in conn.execute(
+            "SELECT season_number, episode_number FROM episodes WHERE series_uuid=?", (series_uuid,),
         ).fetchall():
-            c = counts.setdefault(sn, [0, 0])
-            if sp and sn != 0:
-                c[1] += 1
-                special_names.setdefault(sn, set()).add((name or "").strip().lower())
-            else:
-                c[0] += 1
-                existing.add((sn, en))
+            counts[sn] = counts.get(sn, 0) + 1
+            existing.add((sn, en))
 
         tmdb_seasons = {s["season_number"]: s["episodes"]
                         for s in enrich.fetch_tv_structure(tmdb_id, key)}
         max_db_season = max((s for s in counts if s >= 1), default=0)
 
         # Verrou : les saisons passées doivent correspondre en nombre d'épisodes.
-        for s, (n, n_sp) in counts.items():
+        for s, n in counts.items():
             if s < 1:
                 continue
             tmdb_n = len(tmdb_seasons.get(s, []))
-            if s not in tmdb_seasons or n > tmdb_n:
-                return {"status": "unsafe", "added": 0}
-            if s < max_db_season and tmdb_n not in (n, n + n_sp):
+            if s not in tmdb_seasons or n > tmdb_n or (s < max_db_season and tmdb_n != n):
                 return {"status": "unsafe", "added": 0}
 
         added = 0
@@ -128,19 +114,13 @@ def refresh_series_from_tmdb(user_id: int, series_uuid: str, key: str) -> dict:
             # de la saison en cours et les saisons entièrement nouvelles
             if s < 1 or s < max_db_season:
                 continue
-            n, n_sp = counts.get(s, [0, 0])
-            if n_sp and len(eps) == n + n_sp:
-                continue  # les épisodes « en plus » de TMDB sont nos spéciaux, déjà là
             for ep in eps:
-                en = ep["episode_number"]
-                if (s, en) in existing:
+                if (s, ep["episode_number"]) in existing:
                     continue
-                if (ep.get("name") or "").strip().lower() in special_names.get(s, ()):
-                    continue  # déjà présent comme spécial TV Time
                 conn.execute(
-                    "INSERT INTO episodes(series_uuid,season_number,episode_number,name,special,is_specials,runtime,air_date)"
-                    " VALUES (?,?,?,?,0,0,?,?)",
-                    (series_uuid, s, en, ep.get("name"), ep.get("runtime"), ep.get("air_date")),
+                    "INSERT INTO episodes(series_uuid,season_number,episode_number,name,runtime,air_date)"
+                    " VALUES (?,?,?,?,?,?)",
+                    (series_uuid, s, ep["episode_number"], ep.get("name"), ep.get("runtime"), ep.get("air_date")),
                 )
                 added += 1
             _store_air_dates(conn, series_uuid, s, eps)
@@ -152,18 +132,18 @@ LIVE_STATUSES = {"Returning Series", "In Production", "Planned", "Pilot"}
 
 
 def _store_air_dates(conn, series_uuid: str, season: int, eps: list[dict]) -> None:
-    """Recopie les dates de sortie TMDB d'une saison sur les épisodes réguliers locaux.
+    """Recopie les dates de sortie TMDB d'une saison sur les épisodes locaux.
 
-    Refusé si la saison locale compte plus d'épisodes réguliers que TMDB : la
-    numérotation diverge alors (Pokémon…) et on daterait les mauvais épisodes, ce
+    Refusé si la saison locale compte plus d'épisodes que TMDB : la
+    numérotation diverge alors et on daterait les mauvais épisodes, ce
     qui pourrait masquer à tort une série d'« En cours ».
     """
-    regular = "series_uuid=? AND season_number=? AND COALESCE(special, 0) = 0"
-    n = conn.execute(f"SELECT COUNT(*) FROM episodes WHERE {regular}", (series_uuid, season)).fetchone()[0]
+    season_eps = "series_uuid=? AND season_number=?"
+    n = conn.execute(f"SELECT COUNT(*) FROM episodes WHERE {season_eps}", (series_uuid, season)).fetchone()[0]
     if n > len(eps):
         return
     conn.executemany(
-        f"UPDATE episodes SET air_date=? WHERE {regular} AND episode_number=?",
+        f"UPDATE episodes SET air_date=? WHERE {season_eps} AND episode_number=?",
         [(ep.get("air_date") or "", series_uuid, season, ep["episode_number"]) for ep in eps],
     )
 

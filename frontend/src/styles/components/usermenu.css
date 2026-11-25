@@ -42,3 +42,14 @@
   font-variant-numeric: tabular-nums;
 }
 .version-warn { color: #ffb454; }
+
+/* Demandes d'ami / invitations en attente : point sur l'avatar, compteur dans le menu */
+.usermenu-btn { position: relative; }
+.notif-dot {
+  position: absolute; top: 3px; left: 25px; width: 10px; height: 10px; border-radius: 50%;
+  background: #ff6b6b; border: 2px solid rgba(20, 22, 27, 0.95);
+}
+.notif-count {
+  display: inline-block; margin-left: 8px; min-width: 20px; padding: 1px 6px; border-radius: 999px;
+  background: #ff6b6b; color: #fff; font-size: 12px; font-weight: 700; text-align: center;
+}

@@ -48,8 +48,8 @@ git push origin prod
 2. **SSH + code** :
    ```bash
    ssh <compte>@ssh-<compte>.alwaysdata.net
-   git clone git@github.com:<toi>/tv-time-data.git ~/tvtime
-   cd ~/tvtime && git switch prod
+   git clone git@github.com:<toi>/tv-time-data.git ~/ms-tracker
+   cd ~/ms-tracker && git switch prod
    ```
 3. **Back (venv + deps prod allégées)** :
    ```bash
@@ -63,22 +63,22 @@ git push origin prod
 5. **Base** : soit repartir vierge, soit **téléverser ta base locale** :
    ```bash
    # depuis ta machine
-   scp data/tvtime.db <compte>@ssh-<compte>.alwaysdata.net:~/tvtime/data/tvtime.db
+   scp data/tvtime.db <compte>@ssh-<compte>.alwaysdata.net:~/ms-tracker/data/tvtime.db
    ```
 6. **Variables d'environnement** (admin AlwaysData → ton site → *Environnement*, ou un `.env`
    à la racine) :
    ```
    TMDB_API_KEY=…
-   TVTIME_DB_PATH=/home/<compte>/tvtime/data/tvtime.db
+   TVTIME_DB_PATH=/home/<compte>/ms-tracker/data/tvtime.db
    TVTIME_SECURE_COOKIES=1
    TVTIME_BASE_URL=https://<app>.alwaysdata.net
    TVTIME_SMTP_HOST=…  TVTIME_SMTP_PORT=587  TVTIME_SMTP_USER=…  TVTIME_SMTP_PASSWORD=…  TVTIME_SMTP_FROM=…
    ```
 7. **Site** (admin → *Web* → *Sites* → ajouter, type « Programme utilisateur ») avec la commande :
    ```
-   ~/tvtime/.venv/bin/uvicorn api.main:app --host :: --port $PORT --proxy-headers --forwarded-allow-ips '*'
+   ~/ms-tracker/.venv/bin/uvicorn api.main:app --host :: --port $PORT --proxy-headers --forwarded-allow-ips '*'
    ```
-   (répertoire de travail : `~/tvtime`). AlwaysData gère le HTTPS (Let's Encrypt).
+   (répertoire de travail : `~/ms-tracker`). AlwaysData gère le HTTPS (Let's Encrypt).
 8. **Comptes** : crée/associe les comptes via la CLI sur le serveur :
    ```bash
    .venv/bin/python scripts/manage_users.py set-email thom ton.email@gmail.com
@@ -131,9 +131,9 @@ jour le secret correspondant.
 ```bash
 # sur ta machine
 cd frontend && npm ci && npm run build && cd ..
-rsync -az --delete frontend/dist/ <compte>@ssh-<compte>.alwaysdata.net:tvtime/frontend/dist/
+rsync -az --delete frontend/dist/ <compte>@ssh-<compte>.alwaysdata.net:ms-tracker/frontend/dist/
 # sur le serveur
-cd ~/tvtime && git fetch --tags origin && git merge --ff-only vX.Y.Z && .venv/bin/pip install -r requirements-prod.txt
+cd ~/ms-tracker && git fetch --tags origin && git merge --ff-only vX.Y.Z && .venv/bin/pip install -r requirements-prod.txt
 # puis « Redémarrer » le site depuis l'admin AlwaysData
 ```
 
@@ -162,5 +162,6 @@ Lister les versions publiées : `git tag -l "v*"` (ou l'onglet *Tags* du dépôt
 
 La base est un simple fichier. Sauvegarde régulière :
 ```bash
-cp ~/tvtime/data/tvtime.db ~/backups/tvtime-$(date +%F).db
+# .backup et non cp : la base est en mode WAL, une copie brute peut être incomplète
+sqlite3 "$(grep ^TVTIME_DB_PATH ~/ms-tracker/.env | cut -d= -f2)" ".backup /home/<compte>/backups/ms-tracker-$(date +%F).db"
 ```

@@ -1,6 +1,6 @@
 # 📺 MS Tracker
 
-Application de suivi de séries et de films, façon TV Time : ce que tu regardes, où tu en es,
+Application de suivi de séries et de films : ce que tu regardes, où tu en es,
 ce qui sort bientôt. Multi-utilisateur, sur invitation.
 
 **Architecture** : back **FastAPI** + front **React (Vite + TypeScript)**, posés sur un cœur
@@ -16,11 +16,14 @@ métier Python (SQLite, client TMDB). En production, un seul processus sert l'AP
   « Tes plus revus ».
 - **Stats** — rythme des 12 derniers mois, jours de visionnage, temps par année et par genre,
   séries les plus chronophages, films les plus revus, séries laissées en plan. Les
-  visionnages enregistrés en lot (import TV Time, saison cochée d'un coup) n'ont pas de date
+  visionnages enregistrés en lot (import, saison cochée d'un coup) n'ont pas de date
   réelle : ils comptent dans les totaux, pas dans le rythme.
 - **Prochainement** — calendrier des prochains épisodes. Une synchro TMDB quotidienne,
-  automatique, ajoute les nouveaux épisodes (ignorée si la numérotation héritée de TV Time
-  diverge de TMDB, pour ne jamais injecter d'épisodes erronés).
+  automatique, ajoute les nouveaux épisodes (ignorée si la numérotation locale diverge de
+  TMDB, pour ne jamais injecter d'épisodes erronés).
+- **Amis** (menu profil) — ajout par pseudo exact, avec acceptation. Une série peut être
+  regardée avec un ami (« Regarder avec… » sur sa page) : tout épisode coché par l'un est
+  coché chez l'autre, à la même date ; décocher reste personnel.
 - **Recherche TMDB** — n'importe quelle série ou film, en aperçu avant de l'ajouter au suivi ;
   plateformes de visionnage en France.
 - **Découvrir** — suggestions « Pour toi » et tendances de la semaine (onglet sur ordinateur,

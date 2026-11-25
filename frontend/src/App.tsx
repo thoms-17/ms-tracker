@@ -18,6 +18,7 @@ import Suivi from "./pages/Suivi";
 import SeriesDetail from "./pages/SeriesDetail";
 import SeriesPreview from "./pages/SeriesPreview";
 import MoviePreview from "./pages/MoviePreview";
+import Friends from "./pages/Friends";
 
 export default function App() {
   const qc = useQueryClient();
@@ -76,6 +77,7 @@ export default function App() {
           <Route path="/series/:uuid" element={<SeriesDetail />} />
           <Route path="/tmdb/tv/:tmdbId" element={<SeriesPreview />} />
           <Route path="/tmdb/movie/:tmdbId" element={<MoviePreview />} />
+          <Route path="/amis" element={<Friends />} />
         </Routes>
       </main>
       <BottomNav />

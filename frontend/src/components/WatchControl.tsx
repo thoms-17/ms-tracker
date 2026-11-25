@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useCloseOnScroll } from "../hooks";
 
 /**
- * Bouton rond de visionnage, façon TV Time — partagé par épisodes, saisons et films.
+ * Bouton rond de visionnage — partagé par épisodes, saisons et films.
  *  · non vu   → un clic marque comme vu (`onComplete`)
  *  · déjà vu  → un clic ouvre un menu : Revu / Enlever un visionnage / Marquer comme non vu
  * Le chiffre affiché est le nombre de visionnages (complets pour une saison).

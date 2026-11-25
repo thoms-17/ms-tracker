@@ -12,6 +12,12 @@ from src import db
 from src.db import connection
 
 
+@pytest.fixture(autouse=True)
+def _no_real_database(tmp_path, monkeypatch):
+    """Garde-fou : un test sans la fixture `base` ne doit jamais toucher data/tvtime.db."""
+    monkeypatch.setattr(connection, "DB_PATH", str(tmp_path / "absente" / "aucune.db"))
+
+
 @pytest.fixture
 def base(tmp_path, monkeypatch):
     """Base vide (schéma créé) avec deux comptes : alice (1) et bob (2)."""

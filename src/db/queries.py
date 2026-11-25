@@ -28,14 +28,13 @@ def tracked_episodes(user_id: int, series_uuid: str | None = None) -> list[sqlit
 
     Une ligne par épisode, dans l'ordre de diffusion de chaque série : `watched_count`,
     `first_watch` (premier visionnage) et `last_watch` (dernier, revisionnages compris).
-    `special` vaut 1 pour un spécial, y compris rangé dans une saison régulière.
+    Les spéciaux sont les épisodes de la saison 0, comme sur TMDB.
     """
     with connect() as conn:
         return _rows(
             conn,
             """
-            SELECT e.series_uuid, e.id AS episode_id, e.season_number, e.episode_number, e.name,
-                   COALESCE(e.special, 0) AS special, e.air_date,
+            SELECT e.series_uuid, e.id AS episode_id, e.season_number, e.episode_number, e.name, e.air_date,
                    COUNT(w.id) AS watched_count,
                    MIN(w.watched_at) AS first_watch, MAX(w.watched_at) AS last_watch
             FROM episodes e
@@ -54,7 +53,7 @@ def next_unwatched_episode(user_id: int, series_uuid: str) -> int | None:
     with connect() as conn:
         row = conn.execute(
             "SELECT e.id FROM episodes e JOIN series s ON s.series_uuid = e.series_uuid "
-            "WHERE e.series_uuid = ? AND s.user_id = ? AND COALESCE(e.special, 0) = 0 "
+            "WHERE e.series_uuid = ? AND s.user_id = ? AND e.season_number != 0 "
             "AND NOT EXISTS (SELECT 1 FROM watches w WHERE w.episode_id = e.id) "
             "ORDER BY e.season_number, e.episode_number, e.id LIMIT 1",
             (series_uuid, user_id),
@@ -124,7 +123,7 @@ def overview(user_id: int) -> dict:
         # séries dont au moins un épisode régulier est vu
         n_series = conn.execute(
             f"SELECT COUNT(DISTINCT e.series_uuid) {episodes} "
-            "AND COALESCE(e.special, 0) = 0 AND e.season_number != 0", (user_id,)).fetchone()[0]
+            "AND e.season_number != 0", (user_id,)).fetchone()[0]
         span_start, span_end = conn.execute(
             "SELECT MIN(first_watch), MAX(first_watch) FROM ("
             f" SELECT MIN(w.watched_at) AS first_watch {episodes} GROUP BY e.id"
@@ -254,7 +253,7 @@ def recent_watches(user_id: int, limit: int = 20) -> list[dict]:
     """Derniers visionnages enregistrés, du plus récent au plus ancien.
 
     Le tri se fait sur `watches.id` (ordre d'insertion) et non sur `watched_at` :
-    l'import TV Time a attribué la même date à des centaines d'épisodes, si bien
+    l'import d'origine a attribué la même date à des centaines d'épisodes, si bien
     qu'un tri par date ferait remonter ce bloc plutôt que les gestes récents.
     """
     with connect() as conn:

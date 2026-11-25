@@ -50,7 +50,7 @@ def engagement(user_id: int, today: dt.date | None = None) -> dict[str, float]:
     for e in db.tracked_episodes(user_id):
         # épisodes réguliers déjà sortis : une série à jour n'est pas une série délaissée
         aired = e["air_date"] is None or (e["air_date"] != "" and e["air_date"][:10] <= today.isoformat())
-        if not e["special"] and e["season_number"] != 0 and aired:
+        if e["season_number"] != 0 and aired:
             by_series[e["series_uuid"]].append(e["watched_count"])
 
     notes: dict[str, float] = {}

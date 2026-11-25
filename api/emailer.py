@@ -58,21 +58,21 @@ def send_verification_email(to: str, username: str, token: str) -> None:
     link = build_url(f"/verify/{token}")
     body = (
         f"Bonjour {username},\n\n"
-        "Confirme ton adresse email pour activer ton compte TV Time :\n\n"
+        "Confirme ton adresse email pour activer ton compte MS Tracker :\n\n"
         f"{link}\n\n"
         "Ce lien expire dans 24 heures. Si tu n'es pas à l'origine de cette inscription, "
         "ignore cet email.\n"
     )
-    _send(to, "Confirme ton inscription — TV Time", body)
+    _send(to, "Confirme ton inscription — MS Tracker", body)
 
 
 def send_reset_email(to: str, username: str, token: str) -> None:
     link = build_url(f"/reset/{token}")
     body = (
         f"Bonjour {username},\n\n"
-        "Tu as demandé à réinitialiser ton mot de passe TV Time. Clique sur ce lien :\n\n"
+        "Tu as demandé à réinitialiser ton mot de passe MS Tracker. Clique sur ce lien :\n\n"
         f"{link}\n\n"
         "Ce lien expire dans 1 heure. Si tu n'es pas à l'origine de cette demande, "
         "ignore cet email : ton mot de passe reste inchangé.\n"
     )
-    _send(to, "Réinitialise ton mot de passe — TV Time", body)
+    _send(to, "Réinitialise ton mot de passe — MS Tracker", body)

@@ -4,7 +4,9 @@ import type {
   Recommendations,
   SearchItem,
   SeriesDetail,
+  SeriesShare,
   SeriesSummary,
+  Social,
   Stats,
   SyncStatus,
   TmdbMoviePreview,
@@ -108,7 +110,7 @@ export const api = {
 
   // mutations épisodes / séries
   watchEpisode: (id: number) => req(`/episodes/${id}/watch`, { method: "POST" }),
-  // marque l'épisode + tous les précédents non vus de la saison (façon TV Time)
+  // marque l'épisode + tous les précédents non vus de la série
   catchUpEpisode: (id: number) => req(`/episodes/${id}/catch-up`, { method: "POST" }),
   // Les retraits renvoient `untracked` : plus aucun visionnage → la série a quitté le suivi.
   removeEpisodeWatch: (id: number) => req<UnwatchResult>(`/episodes/${id}/watch`, { method: "DELETE" }),
@@ -154,6 +156,30 @@ export const api = {
     req<{ uuid: string }>(`/tmdb/movie/${tmdbId}/watch`, { method: "POST" }),
   providers: (media: "tv" | "movie", tmdbId: number) =>
     req<WatchProviders>(`/tmdb/${media}/${tmdbId}/providers`),
+
+  // amis et visionnage partagé
+  social: () => req<Social>("/friends"),
+  requestFriend: (username: string) =>
+    req<{ status: "pending" | "accepted" }>("/friends", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username }),
+    }),
+  acceptFriend: (userId: number) => req(`/friends/${userId}/accept`, { method: "POST" }),
+  removeFriend: (userId: number) => req(`/friends/${userId}`, { method: "DELETE" }),
+  seriesShares: (tmdbId: number) => req<SeriesShare[]>(`/tmdb/tv/${tmdbId}/shares`),
+  inviteToShare: (tmdbId: number, friendId: number) =>
+    req<{ status: "pending" | "accepted" }>("/shares", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tmdb_id: tmdbId, friend_id: friendId }),
+    }),
+  acceptShare: (id: number, align = false) =>
+    req<{ added: number }>(`/shares/${id}/accept?align=${align}`, { method: "POST" }),
+  alignShare: (id: number) => req<{ added: number }>(`/shares/${id}/align`, { method: "POST" }),
+  pauseShare: (id: number, paused: boolean) =>
+    req(`/shares/${id}/pause?paused=${paused}`, { method: "POST" }),
+  endShare: (id: number) => req(`/shares/${id}`, { method: "DELETE" }),
 };
 
 export const posterUrl = (path: string | null, big = false) =>

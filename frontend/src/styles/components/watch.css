@@ -22,7 +22,7 @@
 }
 .season-actions { display: flex; align-items: center; }
 
-/* Menu popover (façon TV Time), rendu dans un portail sur <body> */
+/* Menu popover, rendu dans un portail sur <body> */
 .menu-layer { position: fixed; inset: 0; z-index: 100; }
 .watch-menu {
   position: fixed; min-width: 210px; padding: 6px;

@@ -171,8 +171,8 @@ export default function Stats() {
 
       {s.undated_views > 0 && (
         <p className="stat-note muted">
-          {nombre(s.undated_views)} visionnages ont été enregistrés en lot (import TV Time, saison
-          cochée d'un coup) et n'ont pas de date réelle : ils comptent dans les totaux et les
+          {nombre(s.undated_views)} visionnages ont été enregistrés en lot (import, saison cochée
+          d'un coup) et n'ont pas de date réelle : ils comptent dans les totaux et les
           classements, pas dans le rythme, les jours ni les années.
         </p>
       )}
@@ -182,8 +182,8 @@ export default function Stats() {
 
 /**
  * Séries commencées, non terminées, dont l'épisode suivant est sorti, sans activité
- * récente. La date de dernière activité n'est pas affichée : pour les séries importées
- * de TV Time, c'est celle de l'import, pas d'un vrai visionnage.
+ * récente. La date de dernière activité n'est pas affichée : pour une série importée,
+ * c'est celle de l'import, pas d'un vrai visionnage.
  */
 function laisseesEnPlan(all: SeriesSummary[]): SeriesSummary[] {
   const limite = Date.now() - STALE_DAYS * 86_400_000;

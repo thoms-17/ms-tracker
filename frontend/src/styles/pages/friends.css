@@ -1,0 +1,31 @@
+/* Page « Amis » et fenêtre « Regarder avec un ami » */
+.friends-page { max-width: 640px; }
+.friends-page h2 { margin: 6px 0 14px; }
+.friends-page section { margin-top: 22px; }
+.friends-hint { margin: -4px 0 10px; font-size: 13px; }
+
+.friend-add { display: flex; flex-wrap: wrap; gap: 8px; }
+.friend-add input {
+  flex: 1; min-width: 0; padding: 10px 13px; border-radius: 12px;
+  font-size: 16px; /* 16px : pas de zoom iOS */
+  background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text);
+}
+.friend-add input:focus { outline: none; border-color: rgba(57, 135, 229, 0.6); }
+.friend-msg { flex-basis: 100%; margin: 2px 0 0; font-size: 13px; }
+.friend-msg.error { color: #ff6b6b; }
+
+.friend-row {
+  display: flex; align-items: center; gap: 12px; padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.friend-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; line-height: 1.35; }
+.friend-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.friend-actions .btn { padding: 6px 12px; font-size: 13px; }
+
+.friend-share { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+.friend-share img, .friend-poster-empty {
+  width: 40px; aspect-ratio: 2 / 3; flex-shrink: 0; object-fit: cover; border-radius: 6px;
+  background: var(--glass); border: 1px solid var(--glass-brd);
+}
+
+.share-list { margin-top: 12px; max-height: 50vh; overflow-y: auto; }
